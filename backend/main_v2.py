@@ -224,36 +224,44 @@ async def scan_markets():
                             risk_manager.confirm_real_trade()
     return {"new_actions": new_actions, "scanned": f"{len(config.SYMBOLS)*len(config.TIMEFRAMES)} pairs", "pending": len(action_engine.get_pending())}
 
+class ExecuteTradeRequest(BaseModel):
+    symbol: str = "BTCUSD"
+    type: str = "BUY"
+    volume: float = 0.01
+
 @app.post("/api/execute")
-async def execute_trade(symbol: str, type: str, volume: float = 0.01):
-    """Now goes through risk manager and action engine, not direct"""
-    # Get latest signal for SL/TP and depth analysis
-    df = await asyncio.to_thread(trader.get_candles, symbol, "M15", 100)
+async def execute_trade(req: ExecuteTradeRequest = None, symbol: str = None, type: str = None, volume: float = None):
+    """Executes trade with risk management and action engine validation"""
+    trade_symbol = req.symbol if req and req.symbol else (symbol or "BTCUSD")
+    trade_type = req.type if req and req.type else (type or "BUY")
+    trade_volume = req.volume if req and req.volume else (volume or 0.01)
+
+    df = await asyncio.to_thread(trader.get_candles, trade_symbol, "M15", 100)
     if df.empty:
-        raise HTTPException(status_code=400, detail="No data for symbol")
-    sig = algo.generate_signal_v2(df, symbol)
+        raise HTTPException(status_code=400, detail=f"No candle data for {trade_symbol}")
+    sig = algo.generate_signal_v2(df, trade_symbol)
     
     # Risk checks
     acc = trader.get_account_info()
-    equity = acc.get("equity", 10000)
+    equity = acc.get("equity", 100000.0)
     can_risk, reason = risk_manager.check_daily_loss(equity)
     if not can_risk:
         raise HTTPException(status_code=403, detail=f"Risk blocked: {reason}")
-    can_risk2, reason2 = risk_manager.check_risk_per_trade(symbol, volume, sig["price"], sig["sl"])
+    can_risk2, reason2 = risk_manager.check_risk_per_trade(trade_symbol, trade_volume, sig["price"], sig["sl"])
     if not can_risk2:
         raise HTTPException(status_code=403, detail=f"Risk blocked: {reason2}")
     can_real, reason_real = risk_manager.check_real_confirmation()
     if not can_real:
-        # Create pending action instead of direct execution for real
-        action = action_engine.create_action(symbol, "M15", sig, historical_data=df)
+        action = action_engine.create_action(trade_symbol, "M15", sig, historical_data=df)
         return {"message": f"Real confirmation required, action created {action['id']}", "action": action, "requires_approval": True}
     
-    # Execute
-    result = trader.send_order(symbol, type, volume, sl=sig.get("sl",0), tp=sig.get("tp",0), comment="V2-EXECUTE")
-    risk_manager.record_trade(symbol, volume)
+    # Execute order
+    result = trader.send_order(trade_symbol, trade_type, trade_volume, sl=sig.get("sl",0), tp=sig.get("tp",0), comment="TV-EXECUTE")
+    risk_manager.record_trade(trade_symbol, trade_volume)
     if config.LIVE_TRADING:
         risk_manager.confirm_real_trade()
-    return {"result": result, "symbol": symbol, "type": type, "volume": volume, "signal": sig}
+    return {"result": result, "symbol": trade_symbol, "type": trade_type, "volume": trade_volume, "signal": sig}
+
 
 class PositionModifyRequest(BaseModel):
     sl: float = 0.0

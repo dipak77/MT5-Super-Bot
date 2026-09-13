@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MT5 SUPER BOT V2 - INSTITUTIONAL TERMINAL • PROD GRACE</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
 <style>
 :root {
   --bg-main: #070a11;
@@ -167,11 +169,11 @@ body {
   <div class="flex flex-wrap items-center gap-2">
     <!-- Symbols -->
     <div class="glass-panel rounded-lg p-1 flex gap-1">
-      <button data-symbol="XAUUSD" class="sym-btn btn-toggle-active px-3 py-1 rounded-md text-xs font-black transition">
-        XAUUSD <span class="text-[9px] opacity-75">GOLD</span>
-      </button>
-      <button data-symbol="BTCUSD" class="sym-btn px-3 py-1 rounded-md text-xs font-bold text-white/70 hover:text-white transition">
+      <button data-symbol="BTCUSD" class="sym-btn btn-toggle-active px-3 py-1 rounded-md text-xs font-black transition">
         BTCUSD <span class="text-[9px] opacity-75">BITCOIN</span>
+      </button>
+      <button data-symbol="XAUUSD" class="sym-btn px-3 py-1 rounded-md text-xs font-bold text-white/70 hover:text-white transition">
+        XAUUSD <span class="text-[9px] opacity-75">GOLD</span>
       </button>
     </div>
 
@@ -183,10 +185,13 @@ body {
       <button data-tf="D1" class="tf-btn px-2.5 py-1 rounded text-[11px] font-semibold text-white/70 hover:text-white transition">D1</button>
     </div>
 
-    <!-- Chart View Mode Switcher: Single (Default) vs MTF Grid -->
-    <div class="glass-panel rounded-lg p-1 flex gap-1 border border-cyan-500/20">
-      <button id="viewSingleBtn" onclick="switchViewMode('single')" class="btn-toggle-active px-3 py-1 rounded text-[11px] font-black flex items-center gap-1.5 transition">
-        <span>🖥️</span> Single Chart Focus
+    <!-- Chart View Mode Switcher: TradingView Pro Studio (Default) vs MT5 Bot Canvas vs MTF Grid -->
+    <div class="glass-panel rounded-lg p-1 flex gap-1 border border-cyan-500/30 bg-cyan-500/5">
+      <button id="viewTvBtn" onclick="switchViewMode('tv')" class="btn-toggle-active px-3 py-1 rounded text-[11px] font-black flex items-center gap-1.5 transition">
+        <span>📊</span> TradingView Pro Studio
+      </button>
+      <button id="viewAlgoBtn" onclick="switchViewMode('algo')" class="px-3 py-1 rounded text-[11px] font-semibold text-white/70 hover:text-white flex items-center gap-1.5 transition">
+        <span>🤖</span> MT5 Bot Canvas
       </button>
       <button id="viewGridBtn" onclick="switchViewMode('grid')" class="px-3 py-1 rounded text-[11px] font-semibold text-white/70 hover:text-white flex items-center gap-1.5 transition">
         <span>🔲</span> 4-Chart MTF Grid
@@ -223,66 +228,92 @@ body {
 
     <!-- 1. DEFAULT: EXPANSIVE SINGLE CHART FOCUS VIEW -->
     <div id="singleChartWrapper" class="glass-panel rounded-2xl p-3 flex flex-col shadow-2xl border border-white/10">
-      <!-- Chart Top Bar with Live Quote -->
+      <!-- Chart Top Bar with Live Quote & Instant Order Box -->
       <div class="flex flex-wrap items-center justify-between pb-2 mb-2 border-b border-white/10 gap-2">
-        <div class="flex items-center gap-3">
-          <span class="font-black text-lg text-white" id="singleChartSymbol">XAUUSD</span>
+        <div class="flex items-center gap-2 sm:gap-3">
+          <span class="font-black text-lg text-white" id="singleChartSymbol">BTCUSD</span>
           <span class="text-xs px-2 py-0.5 rounded-md bg-white/10 font-bold mono" id="singleChartTf">M15</span>
-          <span class="badge-bull text-xs px-2.5 py-0.5 rounded-full mono font-black" id="singleSignalBadge">LE 78</span>
-          <div class="mono text-xs text-white/50 hidden sm:block" id="singleCandleStats">O: 4320.50 H: 4324.80 L: 4318.20 C: 4323.10</div>
+          <span class="badge-bull text-xs px-2.5 py-0.5 rounded-full mono font-black" id="singleSignalBadge">LE 82</span>
+          <span class="text-[9px] px-2 py-0.5 rounded font-black bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hidden md:inline-flex items-center gap-1">
+            <span>🛠️</span> FULL ANALYSIS TOOLBAR ENABLED
+          </span>
+          <div class="mono text-xs text-white/50 hidden xl:block" id="singleCandleStats">O: 76,745 H: 77,311 L: 76,540 C: 76,748</div>
         </div>
+
+        <!-- On-Chart TradingView-Style Quick Order Bar (as in reference image) -->
+        <div class="flex items-center gap-2 px-2.5 py-1 rounded-xl bg-slate-950/90 border border-white/15 shadow-inner">
+          <button id="quickSellBtn" onclick="executeQuickOrder('SELL')" class="px-3 py-1 rounded bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-xs shadow-md shadow-rose-600/30 flex items-center gap-1.5 transition active:scale-95">
+            <span id="quickSellPrice">76,745.0</span> <span class="text-[9px] opacity-80 uppercase">SELL</span>
+          </button>
+          <div class="flex items-center gap-1 bg-black/60 border border-white/20 rounded px-2 py-0.5">
+            <span class="text-[9px] text-white/40 font-bold">LOT:</span>
+            <input type="number" id="quickLotInput" value="0.01" step="0.01" min="0.01" max="10.0" class="w-12 bg-transparent text-white text-xs font-black text-center mono focus:outline-none">
+          </div>
+          <button id="quickBuyBtn" onclick="executeQuickOrder('BUY')" class="px-3 py-1 rounded bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs shadow-md shadow-emerald-600/30 flex items-center gap-1.5 transition active:scale-95">
+            <span id="quickBuyPrice">76,748.0</span> <span class="text-[9px] opacity-80 uppercase">BUY</span>
+          </button>
+        </div>
+
         <div class="flex items-center gap-4">
           <div class="text-right">
-            <div class="mono font-black text-lg text-emerald-400 leading-tight" id="liveQuotePrice">4,323.10</div>
-            <div class="text-[9px] mono text-white/40" id="liveQuoteAtr">ATR(14): 4.80 | Vol: 1,420</div>
+            <div class="mono font-black text-lg text-emerald-400 leading-tight" id="liveQuotePrice">76,748.00</div>
+            <div class="text-[9px] mono text-white/40" id="liveQuoteAtr">ATR(14): 1,240 | Vol: 316</div>
           </div>
         </div>
       </div>
 
-      <!-- Single Canvas Container with Crosshair & Overlay -->
-      <div class="chart-container w-full h-[460px] relative bg-black/40 rounded-xl overflow-hidden" id="canvasContainer">
-        <canvas id="singleMainCanvas" class="w-full h-full block"></canvas>
-        <!-- Floating Crosshair Tooltip -->
-        <div id="chartTooltip" class="chart-tooltip rounded-lg p-2 text-[10px] mono text-slate-200 shadow-xl space-y-0.5">
-          <div class="font-bold text-white border-b border-white/10 pb-0.5" id="tt-date">-</div>
-          <div class="flex justify-between gap-3"><span>OHLC:</span><span id="tt-ohlc">-</span></div>
-          <div class="flex justify-between gap-3 text-cyan-300"><span>EMA 21/50/200:</span><span id="tt-ema">-</span></div>
-          <div class="flex justify-between gap-3 text-purple-300"><span>Bollinger Bands:</span><span id="tt-bb">-</span></div>
-          <div class="flex justify-between gap-3 text-amber-300"><span>RSI / MACD:</span><span id="tt-ind">-</span></div>
-          <div class="flex justify-between gap-3 text-emerald-400"><span>Pattern / Depth:</span><span id="tt-pattern">-</span></div>
-        </div>
+      <!-- A. TradingView Pro Advanced Real-Time Chart Container (Default) -->
+      <div id="tradingviewStudioWrapper" class="w-full h-[620px] rounded-xl overflow-hidden border border-white/10 relative bg-[#0a0f1a] shadow-2xl">
+        <div id="tradingview_advanced_widget" class="w-full h-full"></div>
       </div>
 
-      <!-- Sub-Chart Panes (MACD, RSI, Volume) -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10">
-        <!-- MACD Sub-Pane -->
-        <div class="glass-panel rounded-xl p-2 bg-black/30">
-          <div class="flex justify-between text-[10px] mono font-bold text-cyan-300 mb-1">
-            <span>MACD (7, 26, 9)</span>
-            <span id="subMacdVal">Hist: +1.24</span>
+      <!-- B. MT5 Algorithmic Canvas Container (Alternative View) -->
+      <div id="algoCanvasWrapper" class="hidden flex-col gap-2">
+        <div class="chart-container w-full h-[460px] relative bg-black/40 rounded-xl overflow-hidden" id="canvasContainer">
+          <canvas id="singleMainCanvas" class="w-full h-full block"></canvas>
+          <!-- Floating Crosshair Tooltip -->
+          <div id="chartTooltip" class="chart-tooltip rounded-lg p-2 text-[10px] mono text-slate-200 shadow-xl space-y-0.5">
+            <div class="font-bold text-white border-b border-white/10 pb-0.5" id="tt-date">-</div>
+            <div class="flex justify-between gap-3"><span>OHLC:</span><span id="tt-ohlc">-</span></div>
+            <div class="flex justify-between gap-3 text-cyan-300"><span>EMA 21/50/200:</span><span id="tt-ema">-</span></div>
+            <div class="flex justify-between gap-3 text-purple-300"><span>Bollinger Bands:</span><span id="tt-bb">-</span></div>
+            <div class="flex justify-between gap-3 text-amber-300"><span>RSI / MACD:</span><span id="tt-ind">-</span></div>
+            <div class="flex justify-between gap-3 text-emerald-400"><span>Pattern / Depth:</span><span id="tt-pattern">-</span></div>
           </div>
-          <canvas id="subMacdCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
         </div>
 
-        <!-- RSI Sub-Pane -->
-        <div class="glass-panel rounded-xl p-2 bg-black/30">
-          <div class="flex justify-between text-[10px] mono font-bold text-amber-300 mb-1">
-            <span>WILDER RSI (14)</span>
-            <span id="subRsiVal">58.4 (Bullish)</span>
+        <!-- Sub-Chart Panes (MACD, RSI, Volume) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-2 mt-2 pt-2 border-t border-white/10">
+          <!-- MACD Sub-Pane -->
+          <div class="glass-panel rounded-xl p-2 bg-black/30">
+            <div class="flex justify-between text-[10px] mono font-bold text-cyan-300 mb-1">
+              <span>MACD (7, 26, 9)</span>
+              <span id="subMacdVal">Hist: +1.24</span>
+            </div>
+            <canvas id="subMacdCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
           </div>
-          <canvas id="subRsiCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
-        </div>
 
-        <!-- Tick Volume Sub-Pane -->
-        <div class="glass-panel rounded-xl p-2 bg-black/30">
-          <div class="flex justify-between text-[10px] mono font-bold text-emerald-400 mb-1">
-            <span>TICK VOLUME & MA(20)</span>
-            <span id="subVolVal">Vol: 1,420</span>
+          <!-- RSI Sub-Pane -->
+          <div class="glass-panel rounded-xl p-2 bg-black/30">
+            <div class="flex justify-between text-[10px] mono font-bold text-amber-300 mb-1">
+              <span>WILDER RSI (14)</span>
+              <span id="subRsiVal">58.4 (Bullish)</span>
+            </div>
+            <canvas id="subRsiCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
           </div>
-          <canvas id="subVolCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
+
+          <!-- Tick Volume Sub-Pane -->
+          <div class="glass-panel rounded-xl p-2 bg-black/30">
+            <div class="flex justify-between text-[10px] mono font-bold text-emerald-400 mb-1">
+              <span>TICK VOLUME & MA(20)</span>
+              <span id="subVolVal">Vol: 1,420</span>
+            </div>
+            <canvas id="subVolCanvas" width="380" height="65" class="w-full h-[65px] rounded bg-black/20"></canvas>
+          </div>
         </div>
       </div>
     </div>
+
 
     <!-- 2. ALTERNATIVE: 4-CHART MTF MATRIX VIEW (M15, H1, H4, D1) (Hidden by default) -->
     <div id="gridChartsWrapper" class="hidden grid-cols-1 md:grid-cols-2 gap-2">
@@ -461,13 +492,14 @@ body {
 
 <script>
 // Global State
-let currentSymbol = 'XAUUSD';
+let currentSymbol = 'BTCUSD';
 let currentTF = 'M15';
-let activeViewMode = 'single'; // 'single' or 'grid'
+let activeViewMode = 'tv'; // 'tv' (TradingView Studio), 'algo' (MT5 Bot Canvas), or 'grid'
 let positions = [];
 let pendingActions = [];
 let actionHistory = [];
 let autoTradingMode = 'full_auto'; // 'manual', 'semi_auto', 'full_auto'
+
 let realMode = false;
 let alertCount = 0;
 let backendConnected = false;
@@ -919,32 +951,139 @@ canvasContainer.addEventListener('mouseleave', () => {
 });
 
 // -------------------------------------------------------------
-// VIEW SWITCHER: SINGLE FOCUS VS 4-CHART MTF GRID
+// TRADINGVIEW PRO STUDIO & VIEW SWITCHING CONTROLS
 // -------------------------------------------------------------
+let tvWidget = null;
+
+function getTradingViewSymbol(sym) {
+  if (sym === 'BTCUSD') return 'BITSTAMP:BTCUSD';
+  if (sym === 'XAUUSD') return 'OANDA:XAUUSD';
+  return 'BITSTAMP:BTCUSD';
+}
+
+function getTradingViewInterval(tf) {
+  const map = { 'M15': '15', 'H1': '60', 'H4': '240', 'D1': 'D' };
+  return map[tf] || '15';
+}
+
+function initTradingViewWidget() {
+  const container = document.getElementById('tradingview_advanced_widget');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const symbol = getTradingViewSymbol(currentSymbol);
+  const interval = getTradingViewInterval(currentTF);
+
+  try {
+    if (typeof TradingView !== 'undefined') {
+      tvWidget = new TradingView.widget({
+        "autosize": true,
+        "symbol": symbol,
+        "interval": interval,
+        "timezone": "Asia/Kolkata",
+        "theme": "dark",
+        "style": "1", // High precision Candlesticks
+        "locale": "en",
+        "toolbar_bg": "#0a0f1a",
+        "enable_publishing": false,
+        "withdateranges": true, // 1D, 5D, 1M, 3M, 6M, YTD, 1Y, ALL
+        "hide_side_toolbar": false, // FULL LEFT DRAWING & ANALYSIS HELPER TOOLBAR (Trendlines, Fib, Ruler, Shapes, Text, Magnet)!
+        "allow_symbol_change": true,
+        "show_popup_button": true,
+        "popup_width": "1000",
+        "popup_height": "650",
+        "details": true,
+        "hotlist": false,
+        "calendar": false,
+        "studies": [
+          "MASimple@tv-basicstudies",
+          "RSI@tv-basicstudies",
+          "MACD@tv-basicstudies",
+          "BB@tv-basicstudies"
+        ],
+        "container_id": "tradingview_advanced_widget"
+      });
+      addLog(`📊 Loaded TradingView Pro Chart: ${symbol} (${interval}) with Analysis Helpers`);
+    } else {
+      setTimeout(initTradingViewWidget, 600);
+    }
+  } catch (e) {
+    console.warn("TradingView widget init error:", e);
+  }
+}
+
 function switchViewMode(mode) {
   activeViewMode = mode;
   const singleWrap = document.getElementById('singleChartWrapper');
+  const tvWrap = document.getElementById('tradingviewStudioWrapper');
+  const algoWrap = document.getElementById('algoCanvasWrapper');
   const gridWrap = document.getElementById('gridChartsWrapper');
-  const btnSingle = document.getElementById('viewSingleBtn');
+  const btnTv = document.getElementById('viewTvBtn');
+  const btnAlgo = document.getElementById('viewAlgoBtn');
   const btnGrid = document.getElementById('viewGridBtn');
 
-  if (mode === 'single') {
+  // Reset toggle active classes
+  [btnTv, btnAlgo, btnGrid].forEach(b => { if (b) b.classList.remove('btn-toggle-active'); });
+
+  if (mode === 'tv') {
     singleWrap.classList.remove('hidden');
+    tvWrap.classList.remove('hidden');
+    algoWrap.classList.add('hidden');
+    algoWrap.classList.remove('flex');
     gridWrap.classList.add('hidden');
     gridWrap.classList.remove('grid');
-    btnSingle.classList.add('btn-toggle-active');
-    btnGrid.classList.remove('btn-toggle-active');
+    if (btnTv) btnTv.classList.add('btn-toggle-active');
+    initTradingViewWidget();
+  } else if (mode === 'algo') {
+    singleWrap.classList.remove('hidden');
+    tvWrap.classList.add('hidden');
+    algoWrap.classList.remove('hidden');
+    algoWrap.classList.add('flex');
+    gridWrap.classList.add('hidden');
+    gridWrap.classList.remove('grid');
+    if (btnAlgo) btnAlgo.classList.add('btn-toggle-active');
     renderSingleFocusChart();
     renderSubChartPanes();
-  } else {
+  } else if (mode === 'grid') {
     singleWrap.classList.add('hidden');
     gridWrap.classList.remove('hidden');
     gridWrap.classList.add('grid');
-    btnSingle.classList.remove('btn-toggle-active');
-    btnGrid.classList.add('btn-toggle-active');
+    if (btnGrid) btnGrid.classList.add('btn-toggle-active');
     renderGridCharts();
   }
 }
+
+// -------------------------------------------------------------
+// ON-CHART QUICK ORDER EXECUTION (Direct to MT5 Demo Account)
+// -------------------------------------------------------------
+async function executeQuickOrder(orderType) {
+  const lotInput = document.getElementById('quickLotInput');
+  const volume = parseFloat(lotInput ? lotInput.value : 0.01) || 0.01;
+  addLog(`⚡ Sending instant ${orderType} order for ${currentSymbol} (${volume} Lots)...`);
+
+  try {
+    const res = await fetch(`${API_BASE}/api/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        symbol: currentSymbol,
+        type: orderType,
+        volume: volume
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      const ticket = data.result?.ticket || data.ticket || (data.action?.id ? `ACTION-${data.action.id}` : 'OK');
+      addLog(`✅ Order filled on ${data.symbol || currentSymbol}: ${orderType} ${volume}L (Ticket: #${ticket})`);
+      fetchBackendState();
+    } else {
+      addLog(`⚠️ Order rejected: ${data.detail || data.message || 'Risk rule triggered'}`);
+    }
+  } catch (err) {
+    addLog(`❌ Quick order error: ${err.message}`);
+  }
+}
+
 
 function renderGridCharts() {
   const grid = document.getElementById('gridChartsWrapper');
@@ -1325,9 +1464,14 @@ document.querySelectorAll('.sym-btn').forEach(btn => {
     document.querySelectorAll('.sym-btn').forEach(b => b.classList.remove('btn-toggle-active'));
     btn.classList.add('btn-toggle-active');
     currentSymbol = btn.dataset.symbol;
-    renderSingleFocusChart();
-    renderSubChartPanes();
+    if (activeViewMode === 'tv') {
+      initTradingViewWidget();
+    } else {
+      renderSingleFocusChart();
+      renderSubChartPanes();
+    }
     updateCompositeScorecard();
+    fetchBackendState();
     addLog(`Switched focus symbol to: ${currentSymbol}`);
   });
 });
@@ -1337,12 +1481,18 @@ document.querySelectorAll('.tf-btn').forEach(btn => {
     document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('btn-toggle-active'));
     btn.classList.add('btn-toggle-active');
     currentTF = btn.dataset.tf;
-    renderSingleFocusChart();
-    renderSubChartPanes();
+    if (activeViewMode === 'tv') {
+      initTradingViewWidget();
+    } else {
+      renderSingleFocusChart();
+      renderSubChartPanes();
+    }
     updateCompositeScorecard();
+    fetchBackendState();
     addLog(`Switched timeframe to: ${currentTF}`);
   });
 });
+
 
 function addLog(msg) {
   const c = document.getElementById('logConsole');
@@ -1477,7 +1627,22 @@ setInterval(() => {
     });
   });
 
-  if (activeViewMode === 'single') {
+  // Update live quote and quick order bid/ask buttons
+  const activeCandles = marketData[currentSymbol] ? marketData[currentSymbol][currentTF] : [];
+  if (activeCandles && activeCandles.length > 0) {
+    const cur = activeCandles[activeCandles.length - 1];
+    const sp = currentSymbol === 'BTCUSD' ? 4.0 : 0.4;
+    const bid = (cur.close - sp / 2).toFixed(currentSymbol === 'BTCUSD' ? 1 : 2);
+    const ask = (cur.close + sp / 2).toFixed(currentSymbol === 'BTCUSD' ? 1 : 2);
+    const sellEl = document.getElementById('quickSellPrice');
+    const buyEl = document.getElementById('quickBuyPrice');
+    const quoteEl = document.getElementById('liveQuotePrice');
+    if (sellEl) sellEl.textContent = bid;
+    if (buyEl) buyEl.textContent = ask;
+    if (quoteEl) quoteEl.textContent = cur.close.toLocaleString(undefined, { minimumFractionDigits: 2 });
+  }
+
+  if (activeViewMode === 'algo') {
     renderSingleFocusChart();
     renderSubChartPanes();
   }
@@ -1487,20 +1652,25 @@ setInterval(() => {
 
 // Window resize listener
 window.addEventListener('resize', () => {
-  if (activeViewMode === 'single') {
+  if (activeViewMode === 'algo') {
     renderSingleFocusChart();
     renderSubChartPanes();
   }
 });
 
-// Startup
-renderSingleFocusChart();
-renderSubChartPanes();
+// Startup Sequence
+if (activeViewMode === 'tv') {
+  initTradingViewWidget();
+} else if (activeViewMode === 'algo') {
+  renderSingleFocusChart();
+  renderSubChartPanes();
+}
 updateCompositeScorecard();
 renderPositions();
 renderPendingQueue();
 fetchBackendState();
 connectWebSocket();
+
 </script>
 </body>
 </html>
