@@ -103,17 +103,24 @@ body {
 
     <!-- Center: Live Account & Risk Telemetry -->
     <div class="flex items-center gap-2">
-      <!-- Account Badge -->
+      <!-- Account & MT5 Link Badge -->
       <div class="glass-panel rounded-lg px-2.5 py-1 flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/5">
-        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+        <div class="w-2 h-2 rounded-full bg-amber-400 animate-pulse" id="ipcStatusDot"></div>
         <div class="text-left">
           <div class="flex items-center gap-1.5">
             <span class="text-[10px] font-black text-white" id="accountTrader">Dipak Harane</span>
             <span class="text-[8px] px-1 py-0.2 rounded font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30" id="accountModeBadge">DEMO-USD</span>
+            <button onclick="triggerReconnectMT5()" id="btnReconnectMT5" title="Attempt real IPC link to local MetaTrader 5" class="text-[8px] px-1.5 py-0.5 rounded font-black bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 border border-cyan-500/30 transition flex items-center gap-1 active:scale-95">
+              <span>🔄</span> Reconnect MT5
+            </button>
           </div>
-          <div class="text-[8px] mono text-white/50" id="accountInfoBadge">112559567 • MetaQuotes-Demo</div>
+          <div class="text-[8px] mono text-white/50 flex items-center gap-1.5">
+            <span id="accountInfoBadge">112559567 • MetaQuotes-Demo</span>
+            <span class="text-amber-400 font-semibold" id="ipcNotice" title="Launch desktop MT5 to link live broker IPC">• IPC Waiting (Start MT5)</span>
+          </div>
         </div>
       </div>
+
 
       <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[95px]">
         <div class="text-[8px] tracking-wider text-white/40 font-semibold">BALANCE</div>
@@ -1505,6 +1512,35 @@ function addLog(msg) {
 // -------------------------------------------------------------
 // WEBSOCKET CLIENT & REALTIME TELEMETRY
 // -------------------------------------------------------------
+async function triggerReconnectMT5() {
+  const btn = document.getElementById('btnReconnectMT5');
+  if (btn) btn.innerHTML = '<span>⏳</span> Connecting...';
+  addLog('🔄 Attempting live IPC connection to local MetaTrader 5 desktop...');
+  try {
+    const res = await fetch(`${API_BASE}/api/account/reconnect`, { method: 'POST' });
+    const data = await res.json();
+    if (data.connected) {
+      addLog(`🟢 MT5 REAL IPC CONNECTED! Server: ${data.account.server} (Login: ${data.account.login})`);
+      const dot = document.getElementById('ipcStatusDot');
+      const notice = document.getElementById('ipcNotice');
+      const badge = document.getElementById('accountModeBadge');
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+      if (notice) { notice.textContent = '• REAL IPC CONNECTED'; notice.className = 'text-emerald-400 font-bold'; }
+      if (badge) { badge.textContent = 'REAL-DEMO'; badge.className = 'text-[8px] px-1 py-0.2 rounded font-black bg-emerald-500 text-black shadow-lg shadow-emerald-500/20'; }
+    } else {
+      const detail = data.account?.connection_detail || 'terminal64.exe desktop client not running';
+      addLog(`⚠️ MT5 Desktop IPC not detected: ${detail}`);
+      const notice = document.getElementById('ipcNotice');
+      if (notice) notice.textContent = '• IPC Waiting (Start MT5)';
+    }
+  } catch (err) {
+    addLog(`❌ Reconnect error: ${err.message}`);
+  } finally {
+    if (btn) btn.innerHTML = '<span>🔄</span> Reconnect MT5';
+    fetchBackendState();
+  }
+}
+
 async function fetchBackendState() {
   try {
     const [accRes, pendRes, posRes, stratRes] = await Promise.allSettled([
@@ -1521,8 +1557,18 @@ async function fetchBackendState() {
       if (acc.login) document.getElementById('accountInfoBadge').textContent = `${acc.login} • ${acc.server || 'MetaQuotes-Demo'}`;
       if (acc.name) document.getElementById('accountTrader').textContent = acc.name;
       if (acc.mode) document.getElementById('accountModeBadge').textContent = acc.mode;
+      const dot = document.getElementById('ipcStatusDot');
+      const notice = document.getElementById('ipcNotice');
+      if (acc.connected) {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+        if (notice) { notice.textContent = '• REAL IPC CONNECTED'; notice.className = 'text-emerald-400 font-bold'; }
+      } else {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+        if (notice) { notice.textContent = '• IPC Waiting (Start MT5)'; notice.className = 'text-amber-400 font-semibold'; }
+      }
       backendConnected = true;
     }
+
 
     if (pendRes.status === 'fulfilled' && pendRes.value.ok) {
       const p = await pendRes.value.json();

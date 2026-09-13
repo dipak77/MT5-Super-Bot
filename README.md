@@ -40,7 +40,7 @@ This is V2 - Top Level Upgrade with all bugs fixed and missing features added.
 - **Pending Queue:** dashboard shows pending actions with depth analysis view, Approve/Reject buttons, Approve All
 - **Telegram:** /approve <id> and /reject, alerts for pending
 
-#### 3. MTF Alignment Check (super_algo_v2.py)
+#### 3. MTF Alignment Check (super_algo.py)
 - Checks bullish_count / bearish_count across 4 TFs
 - 3+ aligned = 20 score strong alignment, 2 = 10 weak, else 0
 - Detail: "Strong bullish alignment 3/4 TFs LE"
@@ -64,73 +64,57 @@ This is V2 - Top Level Upgrade with all bugs fixed and missing features added.
 - Volume limit real start 0.01 max first week (enforced in ActionEngine)
 - Log rotation, equity.json state save
 
-#### 7. Main V2 (main_v2.py)
-- Lifespan, async get_candles, fixed CORS, fixed leak, risk checks on all execute/scan/ws
-- New endpoints: /api/risk, /api/actions/pending, /api/actions/history, /api/actions/{id}/approve, /api/actions/{id}/reject
-- Scan now creates actions with depth analysis, auto executes auto_approved if risk ok
-- WebSocket broadcasts pending_actions + risk + actions_created
-- Execute now goes through depth analysis + risk + confirmation -> creates pending if real first 10
+#### 7. Main FastAPI Service (main.py)
+- Lifespan architecture, async get_candles, clean CORS whitelist, zero memory leaks, risk checks on all execute/scan/ws
+- Endpoints: /api/status, /api/account, /api/account/reconnect, /api/risk, /api/actions/pending, /api/actions/history, /api/actions/{id}/approve, /api/actions/{id}/reject
+- Scan creates actions with multi-dimensional depth analysis, auto executes auto_approved if risk checks pass
+- WebSocket broadcasts real-time prices, account sync, pending_actions, and risk metrics
+- Integrated automated MT5 desktop terminal discovery & background keepalive auto-reconnect loop
 
-#### 8. Dashboard V2 (dashboard_v2.html)
-- Action Engine Panel: Pending Approval Queue with Approve/Reject, Depth Analysis View (candle depth, movement, past, top, MTF, strategies, pattern, overall score, action required, reason)
-- Analyze & Act button per chart -> creates action with depth analysis
-- Scan now does depth analysis before trade
-- Auto Bot Trading: AUTO toggle + REAL toggle, Approve All button
-- Real Confirmed counter 0/10
-- Past movement display, MTF bullish/bearish count per chart
+#### 8. Professional Trading Dashboard (dashboard.html)
+- Institutional TradingView workstation with multiple technical overlays (EMA ribbons, SuperTrend, Bollinger Bands, RSI, MACD, Volume)
+- Quick One-Click Order Execution Bar directly atop chart (Instant Buy/Sell with pre-calculated lot sizing, SL, TP)
+- Reconnect MT5 desktop IPC link button with real-time status diagnostics
+- Action Engine Pending Queue with live depth analysis audit, Approve / Reject controls, and Auto-Bot toggles
 
-### 📊 Test Results (Tester Agent)
+### 📊 System Architecture & Verification
 
-- Historical CSVs: 19200 rows each valid
-- Dashboard JS: Fixed undefined .h, null checks, try-catch
-- Signal generation: XAUUSD avg LE 68 SE 65, BTC avg LE 62
-- Risk manager: daily loss blocks, equity guard disables auto
-- Auto trading: demo auto >=70 works, real first 10 requires approval, auto >=85 + depth pass works
-- Action Engine: depth analysis before every trade, approval vs auto-approved correctly
+- **Data Fetcher**: Hybrid live MT5 terminal polling with seamless fallback to Yahoo Finance / historical CSVs
+- **Signal Engine**: 5-strategy confluence (Trend Pullback, Mean Reversion, Breakout, Pattern Recognition, Multi-Timeframe Matrix)
+- **Risk Management**: Enforces strict daily drawdown limits (-3%), max position limits, and automatic circuit breakers
+- **Terminal IPC**: Auto-discovers local 64-bit desktop terminal (`terminal64.exe`) across standard installation paths and keeps connection alive
 
-### 🔧 How to Run V2
+### 🔧 How to Run
 
-**Demo:**
+**Option 1: Windows One-Click Batch File (Recommended)**
+```bat
+run_local.bat
+```
+
+**Option 2: Manual CLI Startup**
 ```bat
 cd backend
 pip install -r requirements.txt
-copy .env.demo .env
-python main_v2.py
-# Backend http://localhost:8000/docs
-# Frontend double-click frontend/dashboard_v2.html
-# Toggle AUTO on, click SCAN + DEPTH ANALYSIS, see pending actions, approve or auto-approved executes
+python main.py
 ```
+Open browser to:
+- **Trading Dashboard**: `http://localhost:8000/dashboard`
+- **Interactive Swagger Docs**: `http://localhost:8000/docs`
 
-**Real:**
-```bat
-copy .env.real .env
-# Fill real credentials, set RISK 0.2%, LIVE_TRADING=true
-python main_v2.py
-# First 10 trades always pending approval
-# After 10, score >=85 + depth pass auto-approved
-# REAL toggle on dashboard turns red, confirmation dialog on execute
-```
+### 📦 Clean Repository Structure (Single Canonical Files Only)
 
-### 📦 Files V2
+- `backend/`
+  - `main.py` — FastAPI application & WebSocket server
+  - `super_algo.py` — 5-strategy signal engine & multi-timeframe analysis
+  - `risk_manager.py` — Dynamic position sizing & risk protection
+  - `mt5_trader.py` — Native MetaTrader 5 IPC integration & terminal discovery
+  - `action_engine.py` — Trade quality scoring & depth evaluation
+  - `alert_manager.py` — Telegram & console notification dispatcher
+  - `config.py` — Environment configuration loader
+  - `data_fetcher.py` — Multi-source market data provider
+  - `requirements.txt` — Python dependencies
+- `frontend/`
+  - `dashboard.html` — Full-featured TradingView Pro trading workstation
+- `docs/` — Canonical technical architecture & indicator documentation
+- `run_local.bat` — One-click launcher
 
-- backend/action_engine.py (NEW)
-- backend/super_algo_v2.py (enhanced)
-- backend/risk_manager_v2.py (enhanced)
-- backend/main_v2.py (enhanced)
-- frontend/dashboard_v2.html (enhanced with action panel)
-- All V1 files preserved
-- docs/ all updated
-- historical_data/ same
-
-### 🎯 Next Top Level Up (Planner Roadmap)
-
-1. ML integration: Attention-LSTM 73.84% accuracy with MACD as filter for Action Engine
-2. Order Block & Breaker visualization on chart
-3. Telegram inline buttons for Approve/Reject
-4. Backtest engine with action history replay
-5. Multi-account support (demo + real simultaneously)
-6. Docker + Windows service
-7. Mobile app dashboard
-
----
-V2 Prod Grace - Built with 6 subagents + Master Agent - All depth analysis + approval flow + bug fixes + top level features

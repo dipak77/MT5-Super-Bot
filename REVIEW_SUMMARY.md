@@ -72,13 +72,13 @@ Trade only if total >=72% demo, >=78% real, and no double top risk.
   - Mode 3: Auto-Approved Real Strict (score>=85 + all depth pass + risk ok + beyond first 10 trades)
 - Production Grace: Lifespan, async, risk checks, equity guard, log rotation, API key
 
-## Files in V2:
-- backend/action_engine.py (NEW - core upgrade)
-- backend/super_algo_v2.py (enhanced)
-- backend/main_v2.py (enhanced)
-- backend/risk_manager_v2.py (enhanced)
-- frontend/dashboard_v2.html (enhanced with action panel)
-- All previous files improved
+## Canonical Repository Structure:
+- `backend/action_engine.py` (Trade quality scoring & depth analysis)
+- `backend/super_algo.py` (5-strategy confluence & MTF matrix)
+- `backend/main.py` (FastAPI production server & WebSocket hub)
+- `backend/risk_manager.py` (Daily loss cap & dynamic position sizing)
+- `frontend/dashboard.html` (TradingView Pro workstation & MT5 reconnect)
+- All duplicate files purged; unified canonical names only.
 
 ## Test Results (Tester Agent):
 - Historical CSVs valid: 19200 rows each

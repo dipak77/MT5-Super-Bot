@@ -1,9 +1,9 @@
 @echo off
-title MT5 Super Bot V2 - Local Runner
+title MT5 Super Bot - Local Runner
 cd /d "%~dp0"
 
 echo =======================================================
-echo   MT5 SUPER BOT V2 - PROD GRACE - ACTION ENGINE
+echo   MT5 SUPER BOT - INSTITUTIONAL TERMINAL
 echo =======================================================
 echo.
 
@@ -13,7 +13,8 @@ if not exist "backend\.env" (
 )
 
 echo [1/2] Starting FastAPI Backend on http://localhost:8000...
-start "MT5 Super Bot V2 Backend" cmd /k "cd /d %~dp0backend && python main_v2.py"
+start "MT5 Super Bot Backend" cmd /k "cd /d %~dp0backend && python main.py"
+
 
 echo [2/2] Opening Dashboard in default browser...
 timeout /t 2 /nobreak >nul
