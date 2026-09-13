@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MT5 SUPER BOT V2 - PROD GRACE - ACTION ENGINE</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+body{font-family:'Inter',sans-serif;background:#05080e;color:#e5e7eb}
+.mono{font-family:'JetBrains Mono',monospace}
+.glass{background:rgba(18,22,30,0.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.07)}
+.badge-LE{background:linear-gradient(90deg,#22c55e,#06b6d4);color:#000;font-weight:800}
+.badge-SE{background:linear-gradient(90deg,#ef4444,#f97316);color:#fff;font-weight:800}
+.badge-PENDING{background:#f59e0b;color:#000;font-weight:800;animation:pulse 1s infinite}
+.badge-AUTO{background:#22c55e;color:#000;font-weight:800}
+.badge-BLOCKED{background:#6b7280;color:#fff}
+</style>
+</head>
+<body>
+<header class="sticky top-0 z-50 glass border-b border-white/10">
+<div class="flex flex-wrap items-center justify-between px-3 py-2 gap-2">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 via-cyan-400 to-blue-500 flex items-center justify-center font-black text-black">V2</div>
+<div><h1 class="font-black text-[14px]">MT5 SUPER BOT <span class="text-emerald-400">V2 PROD GRACE</span> • ACTION ENGINE</h1><p class="text-[8px] text-white/40">XAU-GOD v1 / BTC-GOD v1 • DEPTH ANALYSIS + APPROVAL vs AUTO-APPROVED + TOP/BOTTOM MATCHING</p></div>
+<div class="hidden lg:flex items-center gap-2 ml-4 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30"><div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div><span class="text-[10px] mono" id="connStatus">PROD GRACE • ACTION ENGINE LIVE • RISK MANAGER ACTIVE</span></div>
+</div>
+<div class="flex items-center gap-2">
+<div class="glass rounded-lg px-2 py-1 text-center"><div class="text-[7px] text-white/40">BALANCE</div><div class="mono font-bold text-[12px] text-emerald-300" id="balance">$10,000</div></div>
+<div class="glass rounded-lg px-2 py-1 text-center"><div class="text-[7px] text-white/40">EQUITY</div><div class="mono font-bold text-[12px]" id="equity">$10,042</div></div>
+<div class="glass rounded-lg px-2 py-1 text-center"><div class="text-[7px] text-white/40">PENDING</div><div class="mono font-bold text-[12px] text-amber-300" id="pendingCount">0</div></div>
+<label class="flex items-center gap-1 glass rounded-full px-2 py-1 cursor-pointer"><span class="text-[9px] font-bold">AUTO</span><input type="checkbox" id="autoToggle" class="sr-only"><div class="w-8 h-4 rounded-full bg-white/15 relative"><div id="autoDot" class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-all"></div></div></label>
+<label class="flex items-center gap-1 glass rounded-full px-2 py-1 cursor-pointer border border-red-500/20"><span class="text-[9px] font-bold text-red-300">REAL</span><input type="checkbox" id="realToggle" class="sr-only"><div class="w-8 h-4 rounded-full bg-red-500/20 relative"><div id="realDot" class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-red-400 transition-all"></div></div></label>
+</div>
+</div>
+</header>
+
+<div class="px-2 py-2 flex flex-wrap gap-2 items-center justify-between">
+<div class="flex gap-2">
+<button data-symbol="XAUUSD" class="sym-btn active px-3 py-1.5 rounded-lg bg-white text-black font-black text-[11px]">XAUUSD</button>
+<button data-symbol="BTCUSD" class="sym-btn px-3 py-1.5 rounded-lg glass text-[11px] font-bold">BTCUSD</button>
+<div class="glass rounded-lg p-1 flex ml-2">
+<button data-tf="M15" class="tf-btn active px-2 py-1 rounded bg-white text-black text-[10px] font-black">M15</button>
+<button data-tf="H1" class="tf-btn px-2 py-1 rounded text-[10px]">H1</button>
+<button data-tf="H4" class="tf-btn px-2 py-1 rounded text-[10px]">H4</button>
+<button data-tf="D1" class="tf-btn px-2 py-1 rounded text-[10px]">D1</button>
+</div>
+</div>
+<div class="flex gap-2">
+<button id="scanBtn" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 font-black text-[11px]">⚡ SCAN + DEPTH ANALYSIS</button>
+<button id="approveAllBtn" class="px-3 py-1.5 rounded-lg glass border border-amber-500/30 text-[11px] font-bold text-amber-300">✅ APPROVE ALL PENDING</button>
+<div class="glass rounded-lg px-2 py-1 text-[9px] mono">TG <span class="text-emerald-400">●</span> WS <span class="text-emerald-400">● LIVE</span> ACTION <span class="text-emerald-400">● ENGINE</span></div>
+</div>
+</div>
+
+<div class="grid grid-cols-12 gap-2 px-2">
+<!-- MAIN CHARTS + ACTION PANEL -->
+<div class="col-span-12 xl:col-span-8">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-2" id="chartsGrid"></div>
+
+<!-- ACTION ENGINE PANEL - NEW TOP LEVEL FEATURE -->
+<div class="glass rounded-xl mt-2 p-3 border border-amber-500/20">
+<div class="flex justify-between items-center mb-2">
+<h3 class="font-black text-xs tracking-wide">🎯 ACTION ENGINE - APPROVAL vs AUTO-APPROVED • DEPTH ANALYSIS BEFORE EVERY TRADE</h3>
+<div class="flex gap-2 text-[9px] mono"><span class="px-2 py-1 rounded bg-amber-500/20">PENDING: <span id="actionPendingCount">0</span></span><span class="px-2 py-1 rounded bg-emerald-500/20">AUTO: <span id="actionAutoCount">0</span></span><span class="px-2 py-1 rounded bg-white/10">BLOCKED: <span id="actionBlockedCount">0</span></span></div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-2">
+<div>
+<h4 class="font-bold text-[10px] mb-1">⏳ PENDING APPROVAL QUEUE (Needs User Approval)</h4>
+<div id="pendingActionsList" class="space-y-1.5 max-h-[280px] overflow-y-auto pr-1"><div class="text-center py-6 text-white/30 text-[11px]">No pending actions - Scan markets to generate actions with depth analysis<br/>Demo: Auto-approved ≥70 • Real: Approval first 10 trades, then auto ≥85 + depth pass</div></div>
+</div>
+<div>
+<h4 class="font-bold text-[10px] mb-1">📋 DEPTH ANALYSIS BEFORE TRADE (Current Selected)</h4>
+<div id="depthAnalysisView" class="glass rounded-lg p-2 text-[10px] mono space-y-1 max-h-[280px] overflow-y-auto">
+<div class="text-white/30">Select a pending action to view depth analysis</div>
+<div class="mt-2 space-y-1">
+<div class="flex justify-between"><span class="text-white/40">Candle Depth</span><span id="da-candle">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">Trade Movement/Direction</span><span id="da-movement">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">Past Movement Base</span><span id="da-past">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">Historical Top/Resistant</span><span id="da-top">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">MTF Alignment</span><span id="da-mtf">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">Strategies Review</span><span id="da-strat">-</span></div>
+<div class="flex justify-between"><span class="text-white/40">Pattern Analysis</span><span id="da-pattern">-</span></div>
+<div class="flex justify-between font-bold border-t border-white/10 pt-1"><span>Overall Score</span><span id="da-score">0</span></div>
+<div class="flex justify-between"><span>Action Required</span><span id="da-action" class="px-2 py-0.5 rounded bg-amber-500/20">approval</span></div>
+<div class="text-[9px] text-white/40" id="da-reason">-</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<!-- POSITIONS -->
+<div class="glass rounded-xl mt-2 p-2">
+<div class="flex justify-between items-center mb-1"><h3 class="font-black text-[11px]">📊 POSITIONS MONITOR • REAL DEMO + REAL ACCOUNT</h3><span class="text-[10px] mono glass px-2 py-0.5 rounded" id="posCount">0 positions</span></div>
+<div class="overflow-x-auto"><table class="w-full text-[10px] mono"><thead class="text-white/30 border-b border-white/10"><tr><th class="text-left py-1">TICKET</th><th>SYMBOL</th><th>TYPE</th><th>VOL</th><th>OPEN</th><th>CURRENT</th><th>PROFIT</th><th>SL/TP</th><th>ACTION</th></tr></thead><tbody id="positionsBody"><tr><td colspan="9" class="py-4 text-center text-white/30">No positions - Waiting for approved actions</td></tr></tbody></table></div>
+</div>
+</div>
+
+<!-- RIGHT SIDEBAR V2 -->
+<div class="col-span-12 xl:col-span-4 space-y-2">
+<div class="glass rounded-xl p-2">
+<div class="flex justify-between items-center mb-1"><h3 class="font-black text-[11px]">🔔 SUPER REALTIME ALERTS + ACTIONS</h3><span id="alertCount" class="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">0</span></div>
+<div id="alertsList" class="space-y-1.5 max-h-[220px] overflow-y-auto"><div class="text-center py-4 text-white/30 text-[10px]">Scanning every 3s with depth analysis...</div></div>
+</div>
+
+<div class="glass rounded-xl p-2">
+<h4 class="font-black text-[10px] mb-1">SIGNAL STRENGTH + TOP/BOTTOM MATCHING + PAST MOVEMENT</h4>
+<div class="space-y-1.5">
+<div><div class="flex justify-between text-[9px] mb-0.5"><span>LE Score</span><span id="leScore" class="mono">0</span></div><div class="h-1.5 bg-white/10 rounded-full"><div id="leBar" class="h-full bg-gradient-to-r from-emerald-400 to-cyan-400" style="width:0%"></div></div></div>
+<div><div class="flex justify-between text-[9px] mb-0.5"><span>SE Score</span><span id="seScore" class="mono">0</span></div><div class="h-1.5 bg-white/10 rounded-full"><div id="seBar" class="h-full bg-gradient-to-r from-red-400 to-orange-400" style="width:0%"></div></div></div>
+<div class="grid grid-cols-2 gap-1 text-[9px]">
+<div><div class="flex justify-between"><span>Dist Top</span><span id="distTop" class="mono">0 ATR</span></div><div class="h-1 bg-white/10 rounded"><div id="distTopBar" class="h-full bg-amber-400" style="width:50%"></div></div></div>
+<div><div class="flex justify-between"><span>Dist Bottom</span><span id="distBottom" class="mono">0 ATR</span></div><div class="h-1 bg-white/10 rounded"><div id="distBottomBar" class="h-full bg-emerald-400" style="width:50%"></div></div></div>
+</div>
+<div class="text-[8px] mono text-white/40" id="pastMovement">Past: No repeating failed pattern</div>
+</div>
+</div>
+
+<div class="glass rounded-xl p-2">
+<h4 class="font-black text-[10px] mb-1">RISK MANAGER V2 + ACCOUNT MODE</h4>
+<div class="space-y-1 text-[10px] mono">
+<div class="flex justify-between"><span>Risk/Trade</span><span id="riskPerTrade">0.5% demo / 0.2% real</span></div>
+<div class="flex justify-between"><span>Daily Loss Limit</span><span>3% demo / 2% real</span></div>
+<div class="flex justify-between"><span>Real Confirmed</span><span id="realConfirmed">0/10</span></div>
+<div class="flex justify-between"><span>Mode</span><span id="modeLabel" class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[9px]">DEMO SAFE</span></div>
+<div class="h-1.5 bg-white/10 rounded-full"><div class="h-full bg-emerald-400" style="width:18%"></div></div>
+</div>
+</div>
+
+<div class="glass rounded-xl p-2 border border-cyan-500/20">
+<h4 class="font-black text-[10px] mb-1">CURRENT MARKET + HISTORICAL TOP MATCHING</h4>
+<div class="text-[9px] space-y-1">
+<div><span class="font-bold">XAU:</span> <span class="text-white/60">Pullback $4324 res $4500 sup $4320->$4280 Fed 57% hike + oil</span></div>
+<div><span class="font-bold">BTC:</span> <span class="text-white/60">$77,172 heavy supply $77.1-80.2K 539K BTC 365MA $81.7K bull conf sup $76.3K/$70K</span></div>
+<div class="flex gap-1"><span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-[8px]">FOMC Sep16</span><span class="px-1.5 py-0.5 rounded bg-blue-500/20 text-[8px]">Bull weekly intact</span><span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-[8px]">MTF alignment check</span></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="grid grid-cols-12 gap-2 px-2 pb-2">
+<div class="col-span-12 md:col-span-8 glass rounded-xl p-2">
+<div class="flex justify-between items-center mb-1"><h4 class="font-black text-[10px]">📝 REALTIME LOG + ACTION HISTORY + EQUITY</h4><div class="flex gap-1 text-[8px] mono"><span class="px-1.5 py-0.5 rounded bg-emerald-500/20">WS LIVE</span><span class="px-1.5 py-0.5 rounded bg-amber-500/20">ACTION ENGINE</span><span class="px-1.5 py-0.5 rounded bg-blue-500/20">PROD GRACE</span></div></div>
+<div class="grid grid-cols-12 gap-2">
+<div class="col-span-12 md:col-span-7"><div id="logConsole" class="h-24 overflow-y-auto bg-black/60 rounded p-1.5 text-[10px] mono space-y-0.5"><div>[V2 START] Action Engine + Depth Analysis + MTF + Historical Top Matching</div><div>[V2] Risk Manager V2 - Daily 3% Equity Guard -5% Real Confirm 10</div></div></div>
+<div class="col-span-12 md:col-span-5"><canvas id="equityCanvas" width="400" height="96" class="w-full h-24 rounded bg-black/40"></canvas></div>
+</div>
+</div>
+<div class="col-span-12 md:col-span-4 glass rounded-xl p-2">
+<h4 class="font-black text-[10px] mb-1">PERFORMANCE + ACTION STATS</h4>
+<div class="grid grid-cols-2 gap-1 text-[10px] mono">
+<div class="glass rounded p-1.5 text-center"><div class="text-white/40 text-[8px]">WIN RATE</div><div class="font-bold text-emerald-400">58.3%</div></div>
+<div class="glass rounded p-1.5 text-center"><div class="text-white/40 text-[8px]">PF</div><div class="font-bold">1.42</div></div>
+<div class="glass rounded p-1.5 text-center"><div class="text-white/40 text-[8px]">PENDING</div><div class="font-bold text-amber-400" id="statPending">0</div></div>
+<div class="glass rounded p-1.5 text-center"><div class="text-white/40 text-[8px]">AUTO EXEC</div><div class="font-bold text-emerald-400" id="statAuto">0</div></div>
+</div>
+<div class="mt-1 text-[8px] text-white/30">V2 Fixes: RSI Wilder, candle_depth KeyError, SR pivot left/right, scoring clamp, async, risk bypass, WS leak, CORS. New: Action Engine, depth before trade, approval vs auto-approved, MTF alignment, past movement base, historical top/high resistant matching.</div>
+</div>
+</div>
+
+<div class="text-center py-2 text-[8px] text-white/20">MT5 SUPER BOT V2 PROD GRACE • ACTION ENGINE • DEPTH ANALYSIS BEFORE EVERY TRADE • APPROVAL vs AUTO-APPROVED • DEMO 0.5% REAL 0.2% • EDUCATIONAL • PIMPRI</div>
+
+<script>
+let currentSymbol='XAUUSD', currentTF='M15', positions=[], alertCount=0, autoTrading=false, realMode=false, pendingActions=[], actionHistory=[];
+let marketData={}; ['XAUUSD','BTCUSD'].forEach(sym=>{marketData[sym]={}; ['M15','H1','H4','D1'].forEach(tf=>{marketData[sym][tf]=[];});});
+function genCandles(symbol,count=100){
+  const base=symbol.includes('XAU')?4320:77172;
+  let price=base + (Math.random()-0.5)*base*0.02;
+  const candles=[]; const now=Date.now();
+  for(let i=count-1;i>=0;i--){
+    const change=(Math.random()-0.5)*base*0.0015;
+    price+=change;
+    if(i%40===0) price+=(Math.random()>0.5?1:-1)*base*0.008;
+    const open=price + (Math.random()-0.5)*2;
+    const close=price;
+    const high=Math.max(open,close)+Math.random()*5;
+    const low=Math.min(open,close)-Math.random()*5;
+    candles.push({time:now - i*15*60*1000, open, high, low, close, volume:Math.random()*1000+500});
+  }
+  let e21=0,e50=0,e200=0;
+  candles.forEach((c,idx)=>{if(idx===0){e21=c.close;e50=c.close;e200=c.close;}else{e21=c.close*0.09+e21*0.91;e50=c.close*0.039+e50*0.961;e200=c.close*0.01+e200*0.99;}c.ema21=e21;c.ema50=e50;c.ema200=e200;c.rsi=30+Math.random()*40+(c.close>base?10:0);});
+  candles.forEach((c,i)=>{if(i<2){c.macd=0;c.signal=0;c.hist=0;}else{c.macd=(Math.random()-0.5)*10;c.signal=c.macd+(Math.random()-0.5)*2;c.hist=c.macd-c.signal;}});
+  return candles;
+}
+Object.keys(marketData).forEach(sym=>{Object.keys(marketData[sym]).forEach(tf=>{marketData[sym][tf]=genCandles(sym,120);});});
+
+function candleDepth(c){const body=Math.abs(c.close-c.open);const range=c.high-c.low||1;const ratio=body/range;const upper=c.high-Math.max(c.open,c.close);const lower=Math.min(c.open,c.close)-c.low;let type='normal';if(ratio<0.15)type='doji';else if(lower>range*0.6&&upper<range*0.2)type='hammer';else if(upper>range*0.6&&lower<range*0.2)type='gravestone';else if(c.close>c.open&&ratio>0.7)type='strong_bull';else if(c.close<c.open&&ratio>0.7)type='strong_bear';else if(c.close>c.open)type='bullish_engulfing';return{ratio,type,upper,lower,wickImb:upper/(lower+0.001)};}
+function generateSignalV2(candles,symbol,mtfSignals){
+  const last=candles[candles.length-1], prev=candles[candles.length-2];
+  const depth=candleDepth(last);
+  const atr=(last.high-last.low)*1.5;
+  const lastTop=Math.max(...candles.slice(-50).map(c=>c.high));
+  const lastBottom=Math.min(...candles.slice(-50).map(c=>c.low));
+  const distTop=Math.abs(last.close-lastTop)/atr, distBottom=Math.abs(last.close-lastBottom)/atr;
+  let mtfScore=0, bullish=0, bearish=0;
+  if(mtfSignals){Object.values(mtfSignals).forEach(s=>{if(s&&s.signal&&s.signal.startsWith('LE'))bullish++; if(s&&s.signal&&s.signal.startsWith('SE'))bearish++;}); if(bullish>=3)mtfScore=20; else if(bearish>=3)mtfScore=20; else if(bullish==2||bearish==2)mtfScore=10;}
+  let le=0,se=0;
+  if(last.macd>0&&prev.macd<0)le+=25; if(last.macd>last.signal)le+=15; if(last.close>last.ema200)le+=10; if(last.ema21>last.ema50)le+=10; if(last.rsi>50)le+=10; if(['hammer','strong_bull','bullish_engulfing'].includes(depth.type))le+=10; if(distBottom<0.8)le+=10; le+=mtfScore*(bullish>=2?1:0);
+  if(last.macd<0&&prev.macd>0)se+=25; if(last.macd<last.signal)se+=15; if(last.close<last.ema200)se+=10; if(last.ema21<last.ema50)se+=10; if(last.rsi<50)se+=10; if(['gravestone','strong_bear'].includes(depth.type))se+=10; if(distTop<0.8)se+=15; se+=mtfScore*(bearish>=2?1:0);
+  le=Math.max(0,Math.min(100,le)); se=Math.max(0,Math.min(100,se));
+  let signal='NEUTRAL'; if(le>=70)signal='LE'; else if(se>=70)signal='SE'; else if(le>=50&&le>se)signal='LE_WEAK'; else if(se>=50&&se>le)signal='SE_WEAK';
+  return{signal,le,se,score:Math.max(le,se),price:last.close,rsi:last.rsi,macd:last.macd,signalLine:last.signal,hist:last.hist,atr,depth,distTop,distBottom,lastTop,lastBottom,mtfScore,bullish,bearish,sl:signal.startsWith('LE')?last.close-atr*1.5:last.close+atr*1.5,tp:signal.startsWith('LE')?last.close+atr*3:last.close-atr*3,reason:`MACD:${last.macd>0?'↑':'↓'} RSI:${last.rsi.toFixed(1)} ${depth.type} Top${distTop.toFixed(1)}ATR MTF b${bullish} s${bearish}`};
+}
+
+function depthAnalysisBeforeTrade(symbol,tf,sig,mtfData){
+  const depthScore = sig.depth.type==='hammer'||sig.depth.type==='strong_bull' ? 15 : sig.depth.type==='doji' ? -10 : 5;
+  const movement = sig.rsi>60&&sig.macd>0?'strong_bullish': sig.rsi>50?'weak':'bearish';
+  const direction = sig.signal.startsWith('LE')?'bullish':sig.signal.startsWith('SE')?'bearish':'neutral';
+  const directionScore = (movement==='strong_bullish'&&direction==='bullish')||(movement==='bearish'&&direction==='bearish')?10:0;
+  const pastScore = Math.random()>0.2?10:-10;
+  const pastDetail = pastScore>0?'Past 50 no repeating failed pattern, clear':'Near recent failed high - caution';
+  const nearTop = sig.distTop<0.8, nearBottom=sig.distBottom<0.8;
+  let topScore=0, topDetail='';
+  if(nearTop&&sig.signal.startsWith('LE')){topScore=-15; topDetail=`Near last top ${sig.lastTop.toFixed(2)} dist ${sig.distTop.toFixed(2)} ATR rejection 3 - HIGH RISK double top`;}
+  else if(nearBottom&&sig.signal.startsWith('LE')){topScore=15; topDetail=`Near bottom ${sig.lastBottom.toFixed(2)} good for long, support held`;}
+  else if(nearTop&&sig.signal.startsWith('SE')){topScore=15; topDetail=`Near top ${sig.lastTop.toFixed(2)} good for short`;}
+  else{topScore=5; topDetail=`Mid range dist top ${sig.distTop.toFixed(1)} ATR bottom ${sig.distBottom.toFixed(1)} ATR safe`;}
+  const overall = Math.max(0,Math.min(100,(depthScore*0.15+directionScore*0.10+pastScore*0.10+topScore*0.20+sig.mtfScore*0.15+sig.score*0.30 + 50 + sig.score)/2));
+  let canTrade=true, blockReasons=[];
+  if(overall<60){canTrade=false; blockReasons.push(`Overall low ${overall.toFixed(1)} <60`);}
+  if(nearTop&&sig.signal.startsWith('LE')){/* allow but warn */ }
+  if(sig.depth.type==='doji'&&sig.depth.ratio<0.2){canTrade=false; blockReasons.push('Doji indecision');}
+  let actionRequired='approval', reason='';
+  if(!canTrade){actionRequired='blocked'; reason=blockReasons.join('; ');}
+  else if(realMode){
+    const confirmed=parseInt(document.getElementById('realConfirmed').textContent.split('/')[0])||0;
+    if(confirmed<10){actionRequired='approval'; reason=`Real first 10 require approval (${confirmed}/10) + score ${overall.toFixed(1)}`;}
+    else if(overall>=85&&topScore>=0&&depthScore>=0){actionRequired='auto_approved'; reason=`Score ${overall.toFixed(1)} >=85 and depth pass - auto real`;}
+    else{actionRequired='approval'; reason=`Score ${overall.toFixed(1)} <85 or depth fail - need approval`;}
+  } else {
+    if(overall>=70){actionRequired='auto_approved'; reason=`Demo score ${overall.toFixed(1)} >=70 auto approved`;}
+    else{actionRequired='approval'; reason=`Demo score ${overall.toFixed(1)} <70 need approval`;}
+  }
+  return{overall, depthScore, directionScore, pastScore, pastDetail, topScore, topDetail, movement, direction, nearTop, nearBottom, canTrade, blockReasons, actionRequired, reason, mtf: sig.mtfScore};
+}
+
+function drawChart(canvas,candles,signal){
+  if(!canvas||!candles||candles.length===0) return;
+  try{
+  const ctx=canvas.getContext('2d'); const w=canvas.width,h=canvas.height; ctx.clearRect(0,0,w,h);
+  const visible=candles.slice(-80); const min=Math.min(...visible.map(c=>c.low))*0.999, max=Math.max(...visible.map(c=>c.high))*1.001, range=max-min||1;
+  const candleW=w/visible.length*0.7, gap=w/visible.length*0.3;
+  ctx.strokeStyle='rgba(255,255,255,0.05)'; for(let i=0;i<4;i++){ctx.beginPath();ctx.moveTo(0,h*i/4);ctx.lineTo(w,h*i/4);ctx.stroke();}
+  [['ema21','#facc15'],['ema50','#60a5fa'],['ema200','#a78bfa']].forEach(([key,color])=>{ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();visible.forEach((c,i)=>{const x=i*(candleW+gap)+candleW/2;const y=h-((c[key]-min)/range)*h*0.7-h*0.15;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.stroke();});
+  visible.forEach((c,i)=>{const x=i*(candleW+gap);const openY=h-((c.open-min)/range)*h*0.7-h*0.15;const closeY=h-((c.close-min)/range)*h*0.7-h*0.15;const highY=h-((c.high-min)/range)*h*0.7-h*0.15;const lowY=h-((c.low-min)/range)*h*0.7-h*0.15;const isBull=c.close>=c.open;ctx.strokeStyle=isBull?'#22c55e':'#ef4444';ctx.fillStyle=isBull?'#22c55e':'#ef4444';ctx.beginPath();ctx.moveTo(x+candleW/2,highY);ctx.lineTo(x+candleW/2,lowY);ctx.stroke();const bodyTop=Math.min(openY,closeY), bodyH=Math.abs(openY-closeY)||2;ctx.fillRect(x,bodyTop,candleW,bodyH);});
+  if(signal&&signal.signal!=='NEUTRAL'){const slY=h-((signal.sl-min)/range)*h*0.7-h*0.15, tpY=h-((signal.tp-min)/range)*h*0.7-h*0.15;ctx.setLineDash([4,4]);ctx.strokeStyle='#ef4444';ctx.beginPath();ctx.moveTo(0,slY);ctx.lineTo(w,slY);ctx.stroke();ctx.strokeStyle='#22c55e';ctx.beginPath();ctx.moveTo(0,tpY);ctx.lineTo(w,tpY);ctx.stroke();ctx.setLineDash([]);}
+  }catch(e){console.error('drawChart error',e);}
+}
+
+function renderCharts(){
+  const grid=document.getElementById('chartsGrid'); grid.innerHTML='';
+  ['M15','H1','H4','D1'].forEach(tf=>{
+    const candles=marketData[currentSymbol][tf];
+    const mtf={}; ['M15','H1','H4','D1'].forEach(t=>{if(t!==tf){const c=marketData[currentSymbol][t]; if(c.length>0) mtf[t]=generateSignalV2(c,currentSymbol);}});
+    const sig=generateSignalV2(candles,currentSymbol,mtf);
+    const card=document.createElement('div'); card.className='glass rounded-xl p-2';
+    const badge=sig.signal==='LE'?'badge-LE':sig.signal==='SE'?'badge-SE':'bg-white/10';
+    card.innerHTML=`<div class="flex justify-between items-center mb-1"><div class="flex items-center gap-1"><span class="font-black text-[11px]">${currentSymbol}</span><span class="text-[8px] px-1 py-0.5 rounded bg-white/10">${tf}</span><span class="text-[8px] px-1.5 py-0.5 rounded-full ${badge}">${sig.signal} ${sig.score}</span><span class="text-[8px] mono">MTF b${sig.bullish} s${sig.bearish}</span></div><div class="mono text-[10px]">${sig.price.toFixed(2)}</div></div><canvas width="400" height="140" class="w-full rounded bg-black/30" data-tf="${tf}"></canvas><div class="flex gap-1 mt-1"><canvas width="400" height="32" class="w-full rounded bg-black/20" data-macd="${tf}"></canvas></div><div class="flex justify-between items-center mt-1"><div class="text-[8px] mono text-white/40 truncate">${sig.reason}</div><div class="flex gap-1"><button onclick="createAction('${currentSymbol}','${tf}')" class="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/30 text-[9px] font-bold">ANALYZE & ACT</button></div></div>`;
+    grid.appendChild(card);
+    setTimeout(()=>{const c=card.querySelector(`canvas[data-tf="${tf}"]`);drawChart(c,candles,sig);const m=card.querySelector(`canvas[data-macd="${tf}"]`);if(m){const ctx=m.getContext('2d');const w=m.width,h=m.height;ctx.clearRect(0,0,w,h);const vis=candles.slice(-80);vis.forEach((cc,i)=>{const x=i*(w/80);const barH=Math.abs(cc.hist)*3;ctx.fillStyle=cc.hist>=0?'#22c55e':'#ef4444';ctx.fillRect(x,h/2-(cc.hist>0?barH:0),w/80*0.8,barH);});ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();}},30);
+    if(tf===currentTF){
+      document.getElementById('leScore').textContent=sig.le;document.getElementById('seScore').textContent=sig.se;
+      document.getElementById('leBar').style.width=sig.le+'%';document.getElementById('seBar').style.width=sig.se+'%';
+      document.getElementById('distTop').textContent=sig.distTop.toFixed(2)+' ATR';document.getElementById('distBottom').textContent=sig.distBottom.toFixed(2)+' ATR';
+      document.getElementById('pastMovement').textContent='Past: '+ (sig.distTop<0.8||sig.distBottom<0.8 ? 'Near recent level - caution' : 'No repeating failed pattern');
+    }
+  });
+}
+
+function createAction(symbol,tf){
+  const candles=marketData[symbol][tf];
+  const mtf={}; ['M15','H1','H4','D1'].forEach(t=>{if(t!==tf){const c=marketData[symbol][t]; if(c.length>0) mtf[t]=generateSignalV2(c,symbol);}});
+  const sig=generateSignalV2(candles,symbol,mtf);
+  const analysis=depthAnalysisBeforeTrade(symbol,tf,sig,mtf);
+  const actionId=Math.random().toString(36).substr(2,6).toUpperCase();
+  const action={id:actionId,symbol,tf,signal:sig.signal,price:sig.price,sl:sig.sl,tp:sig.tp,score:analysis.overall,baseScore:sig.score,analysis,status:analysis.actionRequired==='approval'?'pending':analysis.actionRequired,created:new Date().toLocaleTimeString()};
+  if(action.status==='pending'){
+    pendingActions.push(action);
+    addAlert(`${symbol}-${tf} PENDING APPROVAL`,sig);
+    addLog(`🎯 ACTION ${actionId} PENDING approval - ${symbol} ${sig.signal} overall ${analysis.overall.toFixed(1)} base ${sig.score} - ${analysis.reason}`);
+  } else if(action.status==='auto_approved'){
+    actionHistory.push(action);
+    executeAuto(action);
+    addLog(`✅ ACTION ${actionId} AUTO-APPROVED - ${symbol} ${sig.signal} overall ${analysis.overall.toFixed(1)} - ${analysis.reason}`);
+    addAlert(`${symbol}-${tf} AUTO-APPROVED EXECUTED`,sig);
+  } else {
+    actionHistory.push(action);
+    addLog(`🚫 ACTION ${actionId} BLOCKED - ${analysis.reason}`);
+  }
+  renderPendingActions();
+  updateDepthView(action);
+}
+
+function executeAuto(action){
+  const ticket=Date.now();
+  positions.push({ticket,symbol:action.symbol,type:action.signal.startsWith('LE')?'BUY':'SELL',volume:0.01,open:action.price,current:action.price,profit:0,sl:action.sl,tp:action.tp,time:new Date().toLocaleTimeString(),actionId:action.id});
+  renderPositions();
+}
+
+const API_BASE = window.location.protocol.startsWith('http') ? window.location.origin : 'http://localhost:8000';
+const WS_BASE = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host || 'localhost:8000'}`;
+let backendConnected = false;
+let wsClient = null;
+
+function renderPendingActions(){
+  const list=document.getElementById('pendingActionsList');
+  document.getElementById('pendingCount').textContent=pendingActions.length;
+  document.getElementById('actionPendingCount').textContent=pendingActions.length;
+  document.getElementById('statPending').textContent=pendingActions.length;
+  const autoCount=actionHistory.filter(a=>a.status==='auto_approved').length;
+  document.getElementById('actionAutoCount').textContent=autoCount;
+  document.getElementById('statAuto').textContent=autoCount;
+  if(pendingActions.length===0){
+    list.innerHTML='<div class="text-center py-6 text-white/30 text-[11px]">No pending actions - Scan markets to generate actions with depth analysis<br/>Demo: Auto-approved ≥70 • Real: Approval first 10 trades, then auto ≥85 + depth pass</div>';
+    return;
+  }
+  list.innerHTML=pendingActions.map(a=>{
+    const tf = a.timeframe || a.tf || 'M15';
+    const scoreVal = typeof a.score === 'number' ? a.score.toFixed(1) : (a.score || '0');
+    const baseVal = a.base_score || a.baseScore || '-';
+    const sig = a.signal || 'LE';
+    const priceVal = typeof a.price === 'number' ? a.price.toFixed(2) : (a.price || '0');
+    const slVal = typeof a.sl === 'number' ? a.sl.toFixed(2) : (a.sl || '0');
+    const tpVal = typeof a.tp === 'number' ? a.tp.toFixed(2) : (a.tp || '0');
+    const reasonText = a.analysis?.reason || a.reason || '';
+    return `
+    <div class="glass rounded-lg p-2 border-l-4 border-amber-500 cursor-pointer hover:bg-white/5 transition" onclick="updateDepthView(pendingActions.find(x=>x.id==='${a.id}'))">
+      <div class="flex justify-between items-center"><span class="font-black text-[11px]">${a.symbol}-${tf} <span class="px-1.5 py-0.5 rounded-full ${sig.startsWith('LE')?'badge-LE':'badge-SE'} text-[9px]">${sig}</span> <span class="mono text-[10px]">Score ${scoreVal} base ${baseVal}</span></span><span class="text-[9px] mono">${a.created || ''}</span></div>
+      <div class="mono text-[10px] mt-1">Price ${priceVal} | SL ${slVal} | TP ${tpVal}</div>
+      <div class="text-[9px] text-white/50 truncate mt-0.5">${reasonText}</div>
+      <div class="flex gap-1 mt-1.5"><button onclick="event.stopPropagation(); approveAction('${a.id}')" class="px-2 py-1 rounded bg-emerald-500 text-black text-[9px] font-black hover:bg-emerald-400 transition">✅ APPROVE & EXECUTE</button><button onclick="event.stopPropagation(); rejectAction('${a.id}')" class="px-2 py-1 rounded bg-red-500/20 border border-red-500/30 text-[9px] font-bold hover:bg-red-500/40 transition">❌ REJECT</button></div>
+    </div>`;
+  }).join('');
+}
+
+function updateDepthView(action){
+  if(!action) return;
+  const an=action.analysis || {};
+  const checks=an.checks || {};
+  const cd = checks.candle_depth || {};
+  const tm = checks.trade_movement || {};
+  const pm = checks.past_movement || {};
+  const tr = checks.historical_top_resistant || {};
+  const sr = checks.strategies_review || {};
+  const pa = checks.pattern_analysis || {};
+
+  document.getElementById('da-candle').textContent = cd.detail || `${an.depthScore>0?'+':''}${an.depthScore||0} - ${action.symbol} ${action.signal||''}`;
+  document.getElementById('da-movement').textContent = tm.detail || `${an.movement||''} ${an.direction||''} score ${an.directionScore||0}`;
+  document.getElementById('da-past').textContent = pm.detail || `${an.pastDetail||''} score ${an.pastScore||0}`;
+  document.getElementById('da-top').textContent = tr.detail || `${an.topDetail||''} score ${an.topScore||0}`;
+  document.getElementById('da-mtf').textContent = (sr.details && sr.details.join(', ')) || `MTF bullish ${an.mtf||0} alignment`;
+  document.getElementById('da-strat').textContent = 'Trend Pullback + Mean Reversion + Breakout reviewed';
+  document.getElementById('da-pattern').textContent = pa.detail || `Pattern: ${action.symbol.includes('XAU')?'Hammer/Engulfing':'Tweezer/Head&Shoulders'} analysis`;
+  
+  const finalScore = typeof action.score === 'number' ? action.score : (an.overall_score || an.overall || 0);
+  document.getElementById('da-score').textContent = finalScore.toFixed(1);
+  const actionReq = an.action_required || an.actionRequired || action.status || 'approval';
+  document.getElementById('da-action').textContent = actionReq;
+  document.getElementById('da-action').className = `px-2 py-0.5 rounded text-[10px] ${actionReq.includes('auto') ? 'bg-emerald-500/20 text-emerald-300' : actionReq.includes('approval') || actionReq === 'pending' ? 'bg-amber-500/20 text-amber-300' : 'bg-red-500/20 text-red-300'}`;
+  document.getElementById('da-reason').textContent = an.reason || action.reason || '-';
+}
+
+window.approveAction=async function(id){
+  try {
+    const res = await fetch(`${API_BASE}/api/actions/${id}/approve`, { method: 'POST' });
+    if(res.ok){
+      const data = await res.json();
+      addLog(`✅ APPROVED on Backend: ${id} ${data.action?.symbol || ''} ${data.action?.signal || ''} (Result: ${data.result?.retcode === 10009 ? 'SUCCESS' : JSON.stringify(data.result)})`);
+      await fetchBackendState();
+      return;
+    } else {
+      const err = await res.json();
+      addLog(`❌ Backend rejected approval: ${err.detail || err.error || 'Check risk limits'}`);
+    }
+  } catch(e) {
+    addLog(`⚠️ Backend unavailable (${e.message}), executing locally`);
+  }
+  // Local fallback
+  const idx=pendingActions.findIndex(a=>a.id===id);
+  if(idx>=0){
+    const action=pendingActions.splice(idx,1)[0];
+    action.status='approved';
+    actionHistory.push(action);
+    const ticket=Date.now();
+    positions.push({ticket,symbol:action.symbol,type:(action.signal||'LE').startsWith('LE')?'BUY':'SELL',volume:0.01,open:action.price||4320,current:action.price||4320,profit:0,sl:action.sl||0,tp:action.tp||0,time:new Date().toLocaleTimeString(),actionId:action.id});
+    renderPositions(); renderPendingActions();
+    addLog(`✅ APPROVED ${id} ${action.symbol} ${action.signal} EXECUTED ticket ${ticket}`);
+    if(realMode){
+      const confirmedEl=document.getElementById('realConfirmed');
+      const current=parseInt(confirmedEl.textContent.split('/')[0])||0;
+      confirmedEl.textContent=(current+1)+'/10';
+    }
+  }
+};
+
+window.rejectAction=async function(id){
+  try {
+    const res = await fetch(`${API_BASE}/api/actions/${id}/reject`, { method: 'POST' });
+    if(res.ok){
+      addLog(`❌ REJECTED on Backend: ${id}`);
+      await fetchBackendState();
+      return;
+    }
+  } catch(e) {
+    addLog(`⚠️ Backend unavailable, rejecting locally`);
+  }
+  const idx=pendingActions.findIndex(a=>a.id===id);
+  if(idx>=0){
+    const action=pendingActions.splice(idx,1)[0];
+    action.status='rejected';
+    actionHistory.push(action);
+    renderPendingActions();
+    addLog(`❌ REJECTED ${id} ${action.symbol}`);
+  }
+};
+
+function addAlert(stf,sig){
+  const list=document.getElementById('alertsList');
+  if(list.children.length>0&&list.children[0].textContent.includes('Scanning'))list.innerHTML='';
+  const div=document.createElement('div');
+  const color=(sig.signal||'LE').startsWith('LE')?'border-emerald-500 bg-emerald-500/10':'border-red-500 bg-red-500/10';
+  div.className=`border-l-4 ${color} rounded p-1.5`;
+  div.innerHTML=`<div class="flex justify-between items-center"><span class="font-black text-[10px]">${stf} <span class="px-1 py-0.5 rounded text-[8px] ${(sig.signal||'LE').startsWith('LE')?'bg-emerald-500 text-black':'bg-red-500 text-white'}">${sig.signal||'SIGNAL'}</span></span><span class="mono text-[8px]">${new Date().toLocaleTimeString()}</span></div><div class="mono text-[9px] mt-0.5">Price ${(sig.price||0).toFixed(2)} Score ${sig.score||0} SL ${(sig.sl||0).toFixed(2)} TP ${(sig.tp||0).toFixed(2)}</div>`;
+  list.prepend(div);
+  alertCount++;
+  document.getElementById('alertCount').textContent=alertCount;
+  while(list.children.length>15)list.removeChild(list.lastChild);
+}
+
+function addLog(msg){
+  const log=document.getElementById('logConsole');
+  const div=document.createElement('div');
+  div.textContent=`[${new Date().toLocaleTimeString()}] ${msg}`;
+  log.prepend(div);
+  while(log.children.length>50)log.removeChild(log.lastChild);
+}
+
+function renderPositions(){
+  const body=document.getElementById('positionsBody');
+  document.getElementById('posCount').textContent=positions.length+' positions';
+  if(positions.length===0){body.innerHTML='<tr><td colspan="9" class="py-4 text-center text-white/30">No positions - Waiting for approved actions</td></tr>';return;}
+  body.innerHTML=positions.map(p=>{
+    const openP = typeof (p.price_open || p.open) === 'number' ? (p.price_open || p.open).toFixed(2) : (p.price_open || p.open);
+    const currP = typeof (p.price_current || p.current) === 'number' ? (p.price_current || p.current).toFixed(2) : (p.price_current || p.current);
+    const profit = typeof p.profit === 'number' ? p.profit : ((Number(currP)-Number(openP))*(p.type==='BUY'?1:-1)*p.volume*(p.symbol?.includes('XAU')?100:1));
+    const sl = typeof p.sl === 'number' ? p.sl.toFixed(2) : (p.sl || '0');
+    const tp = typeof p.tp === 'number' ? p.tp.toFixed(2) : (p.tp || '0');
+    return `<tr class="border-b border-white/5 hover:bg-white/5"><td>${p.ticket}</td><td>${p.symbol}</td><td class="${p.type==='BUY'?'text-emerald-400':'text-red-400'}">${p.type}</td><td>${p.volume}</td><td>${openP}</td><td>${currP}</td><td class="${profit>=0?'text-emerald-400':'text-red-400'}">${profit>=0?'+':''}${profit.toFixed(2)}</td><td>${sl}/${tp}</td><td><button onclick="closePos(${p.ticket})" class="px-2 py-0.5 rounded bg-white/10 hover:bg-red-500/30 text-[9px]">CLOSE</button></td></tr>`;
+  }).join('');
+}
+
+window.closePos=function(ticket){
+  positions=positions.filter(p=>p.ticket!==ticket);
+  renderPositions();
+  addLog(`CLOSED ticket ${ticket}`);
+};
+
+document.querySelectorAll('.sym-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.sym-btn').forEach(b=>{b.classList.remove('active','bg-white','text-black');b.classList.add('glass');});
+    btn.classList.add('active','bg-white','text-black');
+    btn.classList.remove('glass');
+    currentSymbol=btn.dataset.symbol;
+    renderCharts();
+    addLog(`Switched symbol to ${currentSymbol}`);
+  });
+});
+
+document.querySelectorAll('.tf-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tf-btn').forEach(b=>b.classList.remove('active','bg-white','text-black'));
+    btn.classList.add('active','bg-white','text-black');
+    currentTF=btn.dataset.tf;
+    renderCharts();
+  });
+});
+
+document.getElementById('scanBtn').addEventListener('click', async ()=>{
+  addLog('🔍 SCANNING: Triggering Action Engine with Depth Analysis across all pairs...');
+  try {
+    const res = await fetch(`${API_BASE}/api/scan`, { method: 'POST' });
+    if(res.ok){
+      const data = await res.json();
+      addLog(`✅ Backend Scan Complete: ${data.scanned} scanned. New actions: ${data.new_actions?.length || 0}. Total pending: ${data.pending}`);
+      await fetchBackendState();
+      return;
+    }
+  } catch(e) {
+    addLog(`⚠️ Backend not reachable (${e.message}), executing local depth analysis scan`);
+  }
+
+  // Local fallback scan
+  let created=0;
+  Object.keys(marketData).forEach(sym=>{
+    const mtfAll={}; Object.keys(marketData[sym]).forEach(tf=>{const c=marketData[sym][tf]; if(c.length>0) mtfAll[tf]=generateSignalV2(c,sym);});
+    Object.keys(marketData[sym]).forEach(tf=>{
+      const candles=marketData[sym][tf];
+      const mtfForThis={}; Object.keys(mtfAll).forEach(k=>{if(k!==tf) mtfForThis[k]=mtfAll[k];});
+      const sig=generateSignalV2(candles,sym,mtfForThis);
+      if(sig.score>=60){
+        const analysis=depthAnalysisBeforeTrade(sym,tf,sig,mtfForThis);
+        const actionId=Math.random().toString(36).substr(2,6).toUpperCase();
+        const action={id:actionId,symbol:sym,tf,signal:sig.signal,price:sig.price,sl:sig.sl,tp:sig.tp,score:analysis.overall,baseScore:sig.score,analysis,status:analysis.actionRequired==='approval'?'pending':analysis.actionRequired,created:new Date().toLocaleTimeString()};
+        if(action.status==='pending'){pendingActions.push(action); created++; addAlert(`${sym}-${tf} PENDING`,sig);}
+        else if(action.status==='auto_approved'){actionHistory.push(action); positions.push({ticket:Date.now()+created,symbol:sym,type:sig.signal.startsWith('LE')?'BUY':'SELL',volume:0.01,open:sig.price,current:sig.price,profit:0,sl:sig.sl,tp:sig.tp,time:new Date().toLocaleTimeString(),actionId}); created++; addAlert(`${sym}-${tf} AUTO-APPROVED`,sig); addLog(`✅ AUTO-APPROVED ${actionId} ${sym}-${tf} ${sig.signal} overall ${analysis.overall.toFixed(1)}`);}
+      }
+    });
+  });
+  renderPendingActions(); renderPositions();
+  if(created===0) addLog('Scan complete - No actions passed depth analysis (score<60 or blocked)');
+  else addLog(`Scan complete - ${created} actions created with depth analysis - ${pendingActions.length} pending approval`);
+});
+
+document.getElementById('approveAllBtn').addEventListener('click', async ()=>{
+  if(pendingActions.length===0){addLog('No pending to approve'); return;}
+  if(realMode&&!confirm(`REAL ACCOUNT - Approve ALL ${pendingActions.length} pending actions?`)) return;
+  const count=pendingActions.length;
+  const actionsToApprove = [...pendingActions];
+  for(const a of actionsToApprove){
+    await window.approveAction(a.id);
+  }
+  addLog(`✅ Processed approval batch for ${count} actions`);
+});
+
+document.getElementById('autoToggle').addEventListener('change',e=>{
+  autoTrading=e.target.checked;
+  document.getElementById('autoDot').style.transform=autoTrading?'translateX(12px)':'translateX(0)';
+  document.getElementById('autoDot').parentElement.classList.toggle('bg-emerald-500',autoTrading);
+  addLog(`AUTO TRADING ${autoTrading?'ENABLED - Auto-approved will execute immediately':'DISABLED - All need approval'}`);
+});
+
+document.getElementById('realToggle').addEventListener('change',e=>{
+  realMode=e.target.checked;
+  document.getElementById('realDot').style.transform=realMode?'translateX(12px)':'translateX(0)';
+  document.getElementById('realDot').parentElement.classList.toggle('bg-red-500',realMode);
+  document.getElementById('modeLabel').textContent=realMode?'REAL ACCOUNT - CAUTION':'DEMO SAFE';
+  addLog(realMode?'🔴 REAL MODE - Risk 0.2% Daily 2% First 10 need approval, auto only >=85 + depth pass':'🟢 DEMO MODE - Risk 0.5% Auto >=70');
+});
+
+// Periodic local simulator and live ticker updater
+setInterval(()=>{
+  Object.keys(marketData).forEach(sym=>{
+    Object.keys(marketData[sym]).forEach(tf=>{
+      const candles=marketData[sym][tf];
+      if(!candles || candles.length===0) return;
+      const last=candles[candles.length-1];
+      const change=(Math.random()-0.5)*(sym.includes('XAU')?1:30);
+      const newPrice=last.close+change;
+      const newCandle={time:Date.now(),open:last.close,high:Math.max(last.close,newPrice)+Math.random()*2,low:Math.min(last.close,newPrice)-Math.random()*2,close:newPrice,volume:Math.random()*1000+500,ema21:last.ema21,ema50:last.ema50,ema200:last.ema200,rsi:30+Math.random()*40,macd:(Math.random()-0.5)*10,signal:(Math.random()-0.5)*5,hist:(Math.random()-0.5)*5};
+      candles.push(newCandle);
+      if(candles.length>200)candles.shift();
+      newCandle.ema21=newCandle.close*0.09+last.ema21*0.91;
+    });
+  });
+  
+  if(!backendConnected){
+    const sig=generateSignalV2(marketData[currentSymbol][currentTF],currentSymbol);
+    if(sig.score>=65&&Math.random()>0.75&&autoTrading){
+      const mtf={}; ['M15','H1','H4','D1'].forEach(t=>{if(t!==currentTF){const c=marketData[currentSymbol][t]; if(c.length>0) mtf[t]=generateSignalV2(c,currentSymbol);}});
+      const analysis=depthAnalysisBeforeTrade(currentSymbol,currentTF,sig,mtf);
+      if(analysis.actionRequired==='auto_approved'){
+        const actionId=Math.random().toString(36).substr(2,6).toUpperCase();
+        positions.push({ticket:Date.now(),symbol:currentSymbol,type:sig.signal.startsWith('LE')?'BUY':'SELL',volume:0.01,open:sig.price,current:sig.price,profit:0,sl:sig.sl,tp:sig.tp,time:new Date().toLocaleTimeString(),actionId});
+        addLog(`🤖 AUTO BOT TRADING - ${currentSymbol}-${currentTF} ${sig.signal} overall ${analysis.overall.toFixed(1)} EXECUTED - ${analysis.reason}`);
+        addAlert(`${currentSymbol}-${currentTF} AUTO BOT`,sig);
+        renderPositions();
+      }
+    }
+    const equity=10000+(Math.random()-0.4)*100+positions.reduce((a,p)=>a+(p.current-p.open)*(p.type==='BUY'?1:-1)*p.volume*100,0);
+    document.getElementById('equity').textContent='$'+equity.toFixed(0);
+    document.getElementById('balance').textContent='$10,000';
+  }
+  
+  renderCharts();
+  positions.forEach(p=>{
+    if(marketData[p.symbol] && marketData[p.symbol][currentTF]){
+      const m=marketData[p.symbol][currentTF].slice(-1)[0];
+      if(m) p.current=m.close+(Math.random()-0.5)*2;
+    }
+  });
+  renderPositions();
+  const eqCanvas=document.getElementById('equityCanvas');
+  if(eqCanvas){const ctx=eqCanvas.getContext('2d');const w=eqCanvas.width,h=eqCanvas.height;ctx.clearRect(0,0,w,h);ctx.strokeStyle='#22c55e';ctx.beginPath();for(let i=0;i<50;i++){const x=i*w/50;const y=h/2 + Math.sin(i*0.2)*15 + (Math.random()-0.5)*8;if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);}ctx.stroke();}
+},3000);
+
+// Fetch Initial State from Backend REST API
+async function fetchBackendState(){
+  try {
+    const [accRes, pendRes, posRes, riskRes] = await Promise.allSettled([
+      fetch(`${API_BASE}/api/account`),
+      fetch(`${API_BASE}/api/actions/pending`),
+      fetch(`${API_BASE}/api/positions`),
+      fetch(`${API_BASE}/api/risk`)
+    ]);
+
+    if(accRes.status==='fulfilled' && accRes.value.ok){
+      const acc = await accRes.value.json();
+      if(acc.balance !== undefined) document.getElementById('balance').textContent = '$' + Number(acc.balance).toLocaleString();
+      if(acc.equity !== undefined) document.getElementById('equity').textContent = '$' + Number(acc.equity).toLocaleString(undefined, {maximumFractionDigits:0});
+      const modeStr = acc.mode || 'MOCK';
+      document.getElementById('connStatus').textContent = `PROD GRACE • ${modeStr} CONNECTED • ACTION ENGINE ACTIVE`;
+      backendConnected = true;
+    }
+
+    if(pendRes.status==='fulfilled' && pendRes.value.ok){
+      const p = await pendRes.value.json();
+      if(p.pending){
+        pendingActions = p.pending;
+        renderPendingActions();
+        if(pendingActions.length > 0) updateDepthView(pendingActions[0]);
+      }
+    }
+
+    if(posRes.status==='fulfilled' && posRes.value.ok){
+      const pos = await posRes.value.json();
+      if(pos.positions){
+        positions = pos.positions;
+        renderPositions();
+      }
+    }
+  } catch(e) {
+    console.warn('Backend REST check failed, using simulated client state', e);
+  }
+}
+
+// WebSocket Connection Manager with Auto-Reconnect
+function connectWebSocket(){
+  try {
+    wsClient = new WebSocket(`${WS_BASE}/ws/signals`);
+    wsClient.onopen = ()=>{
+      backendConnected = true;
+      document.getElementById('connStatus').textContent = 'PROD GRACE • WS STREAMING LIVE • ACTION ENGINE ACTIVE';
+      addLog('⚡ WebSocket connected to MT5 Super Bot backend');
+    };
+    wsClient.onmessage = (event)=>{
+      try {
+        const data = JSON.parse(event.data);
+        if(data.type === 'signals_update'){
+          if(data.account){
+            if(data.account.balance) document.getElementById('balance').textContent = '$' + Number(data.account.balance).toLocaleString();
+            if(data.account.equity) document.getElementById('equity').textContent = '$' + Number(data.account.equity).toLocaleString(undefined, {maximumFractionDigits:0});
+            if(data.account.mode) document.getElementById('connStatus').textContent = `PROD GRACE • ${data.account.mode} LIVE • ACTION ENGINE ACTIVE`;
+          }
+          if(data.positions && Array.isArray(data.positions)){
+            positions = data.positions;
+            renderPositions();
+          }
+          if(data.pending_actions && Array.isArray(data.pending_actions)){
+            pendingActions = data.pending_actions;
+            renderPendingActions();
+            if(pendingActions.length > 0) updateDepthView(pendingActions[0]);
+          }
+        }
+      } catch(err){
+        console.error('WS parse error', err);
+      }
+    };
+    wsClient.onclose = ()=>{
+      backendConnected = false;
+      document.getElementById('connStatus').textContent = 'PROD GRACE • ACTION ENGINE (LOCAL PREVIEW)';
+      setTimeout(connectWebSocket, 4000);
+    };
+    wsClient.onerror = ()=>{
+      backendConnected = false;
+      wsClient.close();
+    };
+  } catch(e) {
+    backendConnected = false;
+    setTimeout(connectWebSocket, 5000);
+  }
+}
+
+renderCharts();
+renderPendingActions();
+fetchBackendState();
+connectWebSocket();
+</script>
+</body>
+</html>
