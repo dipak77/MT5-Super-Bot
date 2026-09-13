@@ -101,17 +101,29 @@ body {
 
     <!-- Center: Live Account & Risk Telemetry -->
     <div class="flex items-center gap-2">
-      <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[90px]">
-        <div class="text-[8px] tracking-wider text-white/40 font-semibold">BALANCE</div>
-        <div class="mono font-bold text-xs text-slate-200" id="balance">$10,000.00</div>
+      <!-- Account Badge -->
+      <div class="glass-panel rounded-lg px-2.5 py-1 flex items-center gap-2 border border-emerald-500/30 bg-emerald-500/5">
+        <div class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div>
+        <div class="text-left">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-black text-white" id="accountTrader">Dipak Harane</span>
+            <span class="text-[8px] px-1 py-0.2 rounded font-black bg-emerald-400/20 text-emerald-300 border border-emerald-400/30" id="accountModeBadge">DEMO-USD</span>
+          </div>
+          <div class="text-[8px] mono text-white/50" id="accountInfoBadge">112559567 • MetaQuotes-Demo</div>
+        </div>
       </div>
-      <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[90px]">
+
+      <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[95px]">
+        <div class="text-[8px] tracking-wider text-white/40 font-semibold">BALANCE</div>
+        <div class="mono font-bold text-xs text-slate-200" id="balance">$100,000.00</div>
+      </div>
+      <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[95px]">
         <div class="text-[8px] tracking-wider text-white/40 font-semibold">EQUITY</div>
-        <div class="mono font-bold text-xs text-emerald-400" id="equity">$10,042.50</div>
+        <div class="mono font-bold text-xs text-emerald-400" id="equity">$100,000.00</div>
       </div>
       <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[85px] hidden sm:block">
         <div class="text-[8px] tracking-wider text-white/40 font-semibold">FLOAT PNL</div>
-        <div class="mono font-bold text-xs text-emerald-300" id="floatingPnl">+$42.50 (+0.4%)</div>
+        <div class="mono font-bold text-xs text-emerald-300" id="floatingPnl">+$0.00 (+0.0%)</div>
       </div>
       <div class="glass-panel rounded-lg px-3 py-1 text-center min-w-[85px] hidden md:block">
         <div class="text-[8px] tracking-wider text-white/40 font-semibold">DAILY LOSS CAP</div>
@@ -1356,6 +1368,9 @@ async function fetchBackendState() {
       const acc = await accRes.value.json();
       if (acc.balance !== undefined) document.getElementById('balance').textContent = '$' + Number(acc.balance).toLocaleString(undefined, { minimumFractionDigits: 2 });
       if (acc.equity !== undefined) document.getElementById('equity').textContent = '$' + Number(acc.equity).toLocaleString(undefined, { minimumFractionDigits: 2 });
+      if (acc.login) document.getElementById('accountInfoBadge').textContent = `${acc.login} • ${acc.server || 'MetaQuotes-Demo'}`;
+      if (acc.name) document.getElementById('accountTrader').textContent = acc.name;
+      if (acc.mode) document.getElementById('accountModeBadge').textContent = acc.mode;
       backendConnected = true;
     }
 
@@ -1414,6 +1429,9 @@ function connectWebSocket() {
           if (data.account) {
             if (data.account.balance) document.getElementById('balance').textContent = '$' + Number(data.account.balance).toLocaleString(undefined, { minimumFractionDigits: 2 });
             if (data.account.equity) document.getElementById('equity').textContent = '$' + Number(data.account.equity).toLocaleString(undefined, { minimumFractionDigits: 2 });
+            if (data.account.login) document.getElementById('accountInfoBadge').textContent = `${data.account.login} • ${data.account.server || 'MetaQuotes-Demo'}`;
+            if (data.account.name) document.getElementById('accountTrader').textContent = data.account.name;
+            if (data.account.mode) document.getElementById('accountModeBadge').textContent = data.account.mode;
           }
           if (data.positions) {
             positions = data.positions;
@@ -1428,6 +1446,7 @@ function connectWebSocket() {
           }
         }
       } catch (err) {}
+
     };
     wsClient.onclose = () => {
       backendConnected = false;

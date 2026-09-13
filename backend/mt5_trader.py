@@ -22,44 +22,66 @@ class MT5Trader:
     def __init__(self, config):
         self.config = config
         self.connected = False
-        self.mock_balance = 10000.0
-        self.mock_equity = 10000.0
+        start_bal = float(getattr(self.config, 'START_BALANCE', 100000.0))
+        self.mock_balance = start_bal
+        self.mock_equity = start_bal
         self.positions = []
         self.last_error = None
 
     def connect(self):
         if not MT5_AVAILABLE:
-            print("[MOCK MODE] MT5 not available on this OS - running with synthetic data for dashboard dev")
-            self.connected = True
-            return True
+            print("[DEMO-SYNC] MT5 package not available - running in synchronized demo mode")
+            self.connected = False
+            return False
         try:
             import MetaTrader5 as mt5
-            mt5.initialize(path=self.config.MT5_PATH if self.config.MT5_PATH else None)
-            authorized = mt5.login(self.config.MT5_LOGIN, password=self.config.MT5_PASSWORD, server=self.config.MT5_SERVER)
+            init_kwargs = {}
+            if getattr(self.config, 'MT5_PATH', None):
+                init_kwargs["path"] = self.config.MT5_PATH
+            init_ok = mt5.initialize(**init_kwargs)
+            if not init_ok:
+                self.last_error = f"MT5 initialize failed: {mt5.last_error()}"
+                print(f"[MT5] {self.last_error} - falling back to demo-account sync mode")
+                self.connected = False
+                return False
+
+            login_val = int(self.config.MT5_LOGIN) if self.config.MT5_LOGIN else 0
+            pwd_val = str(self.config.MT5_PASSWORD)
+            srv_val = str(self.config.MT5_SERVER)
+            authorized = mt5.login(login=login_val, password=pwd_val, server=srv_val)
             if not authorized:
-                self.last_error = f"Login failed: {mt5.last_error()}"
-                print(self.last_error)
+                self.last_error = f"MT5 login failed: {mt5.last_error()}"
+                print(f"[MT5] {self.last_error}")
+                self.connected = False
                 return False
             self.connected = True
-            print(f"MT5 Connected: {self.config.MT5_SERVER} - {self.config.MT5_LOGIN}")
+            print(f"[MT5] Connected successfully: {srv_val} - Login: {login_val}")
             return True
         except Exception as e:
             self.last_error = str(e)
-            print(f"MT5 connect error: {e}")
+            print(f"[MT5] Connect error: {e}")
+            self.connected = False
             return False
 
     def _mock_account(self):
+        login = self.config.MT5_LOGIN if self.config.MT5_LOGIN else 112559567
+        server = self.config.MT5_SERVER if self.config.MT5_SERVER else "MetaQuotes-Demo"
+        name = getattr(self.config, 'ACCOUNT_NAME', "Dipak Harane")
+        account_type = getattr(self.config, 'ACCOUNT_TYPE', "Forex Hedged USD")
+        pos_profit = sum(p.get("profit", 0.0) for p in self.positions)
         return {
-                "login": 12345678,
-                "server": "MOCK-DEMO",
-                "balance": self.mock_balance,
-                "equity": self.mock_equity + np.random.randn()*20,
-                "profit": np.random.randn()*10,
-                "leverage": 500,
-                "currency": "USD",
-                "connected": self.connected,
-                "mode": "MOCK"
-            }
+            "login": login,
+            "server": server,
+            "name": name,
+            "account_type": account_type,
+            "balance": round(self.mock_balance, 2),
+            "equity": round(self.mock_equity + pos_profit, 2),
+            "profit": round(pos_profit, 2),
+            "leverage": 500,
+            "currency": "USD",
+            "connected": self.connected,
+            "mode": "REAL-DEMO" if self.connected else "DEMO-ACCOUNT"
+        }
 
     def get_account_info(self):
         if not MT5_AVAILABLE or not self.connected:
@@ -72,11 +94,13 @@ class MT5Trader:
             return {
                 "login": acc.login,
                 "server": acc.server,
+                "name": getattr(acc, "name", getattr(self.config, "ACCOUNT_NAME", "Dipak Harane")),
+                "account_type": getattr(self.config, "ACCOUNT_TYPE", "Forex Hedged USD"),
                 "balance": acc.balance,
                 "equity": acc.equity,
                 "profit": acc.profit,
                 "leverage": acc.leverage,
-                "currency": "USD",
+                "currency": getattr(acc, "currency", "USD"),
                 "connected": True,
                 "mode": "REAL-DEMO"
             }

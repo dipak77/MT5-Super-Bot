@@ -14,8 +14,9 @@ class RiskManagerV2:
         self.config = config
         self.daily_pnl = 0.0
         self.daily_trades = 0
-        self.start_balance = 10000.0
-        self.peak_equity = 10000.0
+        default_bal = float(getattr(self.config, 'START_BALANCE', 100000.0))
+        self.start_balance = default_bal
+        self.peak_equity = default_bal
         self.real_trades_confirmed = 0
         self.last_reset_date = date.today()
         self.log_file = "logs/risk.log"
@@ -25,10 +26,11 @@ class RiskManagerV2:
         try:
             with open("logs/equity.json", "r") as f:
                 data = json.load(f)
-                self.start_balance = data.get("start_balance", 10000.0)
-                self.peak_equity = data.get("peak_equity", 10000.0)
+                self.start_balance = float(data.get("start_balance", default_bal))
+                self.peak_equity = float(data.get("peak_equity", default_bal))
         except:
             pass
+
 
     def reset_if_new_day(self):
         today = date.today()

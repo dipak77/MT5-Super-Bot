@@ -49,3 +49,6 @@ Desktop.ini
 # IDE configuration
 .vscode/
 .idea/
+
+# Binaries / Installers
+*.exe

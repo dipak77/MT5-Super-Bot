@@ -6,8 +6,12 @@ load_dotenv()
 class Config:
     MT5_LOGIN = int(os.getenv("MT5_LOGIN", "0"))
     MT5_PASSWORD = os.getenv("MT5_PASSWORD", "")
-    MT5_SERVER = os.getenv("MT5_SERVER", "")
+    MT5_SERVER = os.getenv("MT5_SERVER", "MetaQuotes-Demo")
     MT5_PATH = os.getenv("MT5_PATH", "")
+    ACCOUNT_NAME = os.getenv("ACCOUNT_NAME", "Dipak Harane")
+    ACCOUNT_TYPE = os.getenv("ACCOUNT_TYPE", "Forex Hedged USD")
+    START_BALANCE = float(os.getenv("START_BALANCE", "100000.0"))
+    INVESTOR_PASSWORD = os.getenv("INVESTOR_PASSWORD", "")
     SYMBOLS = os.getenv("SYMBOLS", "XAUUSD,BTCUSD").split(",")
     TIMEFRAMES = os.getenv("TIMEFRAMES", "M15,H1,H4,D1").split(",")
     RISK_PER_TRADE = float(os.getenv("RISK_PER_TRADE", "0.005"))
@@ -21,3 +25,4 @@ class Config:
     BACKEND_PORT = int(os.getenv("BACKEND_PORT", "8000"))
 
 config = Config()
+
