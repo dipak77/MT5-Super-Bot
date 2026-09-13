@@ -210,3 +210,73 @@ class MT5Trader:
             return {"retcode": result.retcode, "ticket": result.order, "result": str(result)}
         except Exception as e:
             return {"error": str(e), "retcode": -1}
+
+    def close_position(self, ticket):
+        """Close a specific position by ticket"""
+        if not MT5_AVAILABLE or not self.connected:
+            for i, p in enumerate(self.positions):
+                if p["ticket"] == ticket:
+                    closed = self.positions.pop(i)
+                    print(f"[MOCK CLOSE] Closed ticket {ticket} ({closed.get('symbol')} {closed.get('type')})")
+                    return {"retcode": 10009, "ticket": ticket, "closed": True, "mock": True}
+            return {"retcode": -1, "error": f"Ticket {ticket} not found"}
+
+        try:
+            import MetaTrader5 as mt5
+            pos = mt5.positions_get(ticket=ticket)
+            if not pos or len(pos) == 0:
+                return {"retcode": -1, "error": f"Position {ticket} not found"}
+            p = pos[0]
+            close_type = mt5.ORDER_TYPE_SELL if p.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+            price = mt5.symbol_info_tick(p.symbol).bid if p.type == mt5.ORDER_TYPE_BUY else mt5.symbol_info_tick(p.symbol).ask
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "position": ticket,
+                "symbol": p.symbol,
+                "volume": p.volume,
+                "type": close_type,
+                "price": price,
+                "deviation": 20,
+                "magic": 20260913,
+                "comment": "CLOSE-BOT",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
+            result = mt5.order_send(request)
+            return {"retcode": result.retcode, "ticket": ticket, "result": str(result)}
+        except Exception as e:
+            return {"error": str(e), "retcode": -1}
+
+    def close_all_positions(self):
+        """Emergency Kill Switch - close all open positions"""
+        positions = self.get_positions()
+        results = []
+        for p in positions:
+            res = self.close_position(p["ticket"])
+            results.append({"ticket": p["ticket"], "result": res})
+        return {"closed_count": len(results), "details": results}
+
+    def modify_position(self, ticket, sl, tp):
+        """Modify Stop Loss and Take Profit for Break-Even / Trailing Stop"""
+        if not MT5_AVAILABLE or not self.connected:
+            for p in self.positions:
+                if p["ticket"] == ticket:
+                    p["sl"] = float(sl)
+                    p["tp"] = float(tp)
+                    print(f"[MOCK MODIFY] Ticket {ticket} new SL:{sl} TP:{tp}")
+                    return {"retcode": 10009, "ticket": ticket, "sl": sl, "tp": tp, "mock": True}
+            return {"retcode": -1, "error": f"Ticket {ticket} not found"}
+
+        try:
+            import MetaTrader5 as mt5
+            request = {
+                "action": mt5.TRADE_ACTION_SLTP,
+                "position": ticket,
+                "sl": float(sl),
+                "tp": float(tp),
+            }
+            result = mt5.order_send(request)
+            return {"retcode": result.retcode, "ticket": ticket, "sl": sl, "tp": tp, "result": str(result)}
+        except Exception as e:
+            return {"error": str(e), "retcode": -1}
+

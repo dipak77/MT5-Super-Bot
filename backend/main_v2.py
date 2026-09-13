@@ -4,6 +4,7 @@ Fixes: deprecated startup, bypass risk, sync blocking, NaN handling, connection 
 """
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from contextlib import asynccontextmanager
 import asyncio
 import json
@@ -254,6 +255,56 @@ async def execute_trade(symbol: str, type: str, volume: float = 0.01):
         risk_manager.confirm_real_trade()
     return {"result": result, "symbol": symbol, "type": type, "volume": volume, "signal": sig}
 
+class PositionModifyRequest(BaseModel):
+    sl: float = 0.0
+    tp: float = 0.0
+
+@app.post("/api/positions/{ticket}/close")
+def api_close_position(ticket: int):
+    result = trader.close_position(ticket)
+    return {"result": result, "ticket": ticket}
+
+@app.post("/api/positions/close-all")
+def api_close_all_positions():
+    result = trader.close_all_positions()
+    return {"result": result, "message": "Emergency Kill Switch executed: All positions closed"}
+
+@app.post("/api/positions/{ticket}/modify")
+def api_modify_position(ticket: int, req: PositionModifyRequest):
+    result = trader.modify_position(ticket, req.sl, req.tp)
+    return {"result": result, "ticket": ticket, "sl": req.sl, "tp": req.tp}
+
+@app.post("/api/bot/mode")
+def api_set_bot_mode(mode: str = Query("semi_auto")):
+    success = action_engine.set_bot_mode(mode)
+    return {"success": success, "mode": action_engine.bot_mode}
+
+@app.get("/api/strategy/composite")
+async def api_get_composite(symbol: str = Query("XAUUSD"), timeframe: str = Query("M15")):
+    df = await asyncio.to_thread(trader.get_candles, symbol, timeframe, 200)
+    if df.empty:
+        return {"error": "No candle data"}
+    mtf = {}
+    for tf in config.TIMEFRAMES:
+        if tf != timeframe:
+            df_tf = await asyncio.to_thread(trader.get_candles, symbol, tf, 100)
+            if not df_tf.empty:
+                mtf[tf] = algo.generate_signal_v2(df_tf, symbol)
+    sig = algo.generate_signal_v2(df, symbol, mtf_signals=mtf)
+    action = action_engine.depth_analysis_before_trade(symbol, timeframe, sig, mtf, df)
+    return {
+        "symbol": symbol,
+        "timeframe": timeframe,
+        "composite_score": action["overall_score"],
+        "strategy_breakdown": action.get("strategy_breakdown", {}),
+        "checks": action.get("checks", {}),
+        "can_trade": action["can_trade"],
+        "action_required": action["action_required"],
+        "reason": action["reason"],
+        "bot_mode": action_engine.bot_mode,
+        "signal": sig
+    }
+
 # WebSocket with fixed leak
 class ConnectionManager:
     def __init__(self):
@@ -281,6 +332,9 @@ async def ws_signals(websocket: WebSocket):
     await manager.connect(websocket)
     try:
         while True:
+            # Autonomous Trade Lifecycle Management (Break-Even + Trailing Stop)
+            lifecycle_events = action_engine.manage_open_positions(trader)
+
             # Scan with depth analysis
             results = {}
             actions_created = []
@@ -301,13 +355,14 @@ async def ws_signals(websocket: WebSocket):
                     # Auto create actions for strong signals
                     if sig['score'] >= 65:
                         action = action_engine.create_action(symbol, tf, sig, mtf_data=mtf_for_this, historical_data=df)
-                        if action["status"] == "auto_approved":
-                            # Auto execute if risk ok
+                        if action["status"] == "auto_approved" and action_engine.bot_mode == "full_auto":
+                            # Auto execute if risk ok and position cap not exceeded
                             acc = trader.get_account_info()
                             equity = acc.get("equity", 10000)
                             can_risk, _ = risk_manager.check_daily_loss(equity)
-                            if can_risk:
-                                result = trader.send_order(symbol, "BUY" if sig["signal"].startswith("LE") else "SELL", 0.01, sl=sig["sl"], tp=sig["tp"], comment=f"AUTO-WS-{action['id']}")
+                            current_pos = trader.get_positions()
+                            if can_risk and len(current_pos) < action_engine.max_positions:
+                                result = trader.send_order(symbol, "BUY" if sig["signal"].startswith("LE") else "SELL", 0.01, sl=sig.get("sl",0), tp=sig.get("tp",0), comment=f"AUTO-WS-{action['id']}")
                                 action["execution_result"] = result
                                 risk_manager.record_trade(symbol, 0.01)
                         actions_created.append(action)
@@ -321,9 +376,11 @@ async def ws_signals(websocket: WebSocket):
                 "alerts": alerts.get_history(10),
                 "pending_actions": action_engine.get_pending(),
                 "risk": risk_manager.get_status(),
-                "actions_created": actions_created
+                "actions_created": actions_created,
+                "bot_mode": action_engine.bot_mode,
+                "lifecycle_events": lifecycle_events
             })
-            await asyncio.sleep(5)
+            await asyncio.sleep(4)
     except WebSocketDisconnect:
         manager.disconnect(websocket)
     except Exception as e:
@@ -333,3 +390,4 @@ async def ws_signals(websocket: WebSocket):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=config.BACKEND_PORT)
+

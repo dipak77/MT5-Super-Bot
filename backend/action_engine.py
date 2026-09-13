@@ -30,7 +30,108 @@ class ActionEngine:
         self.action_history = []
         self.auto_approval_threshold = 85
         self.demo_threshold = 70
+        self.bot_mode = "full_auto" if getattr(config, 'AUTO_TRADING', False) else "semi_auto"
+        self.max_positions = 3
         os.makedirs("logs", exist_ok=True)
+
+    def set_bot_mode(self, mode: str):
+        if mode in ["manual", "semi_auto", "full_auto"]:
+            self.bot_mode = mode
+            self.log(f"Bot trading mode switched to: {mode.upper()}")
+            return True
+        return False
+
+    def compute_multi_strategy_composite_score(self, signal_data, mtf_data, historical_data):
+        """
+        Single Base Auto Trader Engine:
+        Computes 5 individual strategy sub-scores (0-100) and unifies into a single Composite Score (0-100):
+        1. Trend Pullback (25%)
+        2. Mean Reversion 25% Gate (20%)
+        3. Volatility & Breakout (15%)
+        4. Candlestick & Pattern Depth (20%)
+        5. MTF Alignment Matrix (20%)
+        """
+        sig_type = signal_data.get('signal', 'NEUTRAL')
+        is_bull = sig_type.startswith('LE')
+        is_bear = sig_type.startswith('SE')
+        rsi = signal_data.get('rsi', 50)
+        macd = signal_data.get('macd', signal_data.get('macd_line', 0))
+        atr = signal_data.get('atr', 1)
+        depth_type = signal_data.get('candle_type', 'normal')
+        body_ratio = signal_data.get('body_ratio', 0.5)
+
+        # 1. Trend Pullback Strategy (EMA alignment + healthy pullback)
+        trend_score = 50
+        if is_bull:
+            if 48 <= rsi <= 68: trend_score += 25
+            if macd > 0: trend_score += 15
+            if depth_type in ['hammer', 'strong_bull', 'bullish_engulfing']: trend_score += 10
+        elif is_bear:
+            if 32 <= rsi <= 52: trend_score += 25
+            if macd < 0: trend_score += 15
+            if depth_type in ['gravestone', 'strong_bear']: trend_score += 10
+        trend_score = max(0, min(100, trend_score))
+
+        # 2. Mean Reversion Strategy (25% Gate - BB extreme + RSI exhaustion)
+        reversion_score = 45
+        dist_top = signal_data.get('dist_top_atr', 2.0)
+        dist_bottom = signal_data.get('dist_bottom_atr', 2.0)
+        if is_bull and dist_bottom < 1.0: reversion_score += 35
+        if is_bear and dist_top < 1.0: reversion_score += 35
+        if is_bull and rsi < 42: reversion_score += 20
+        if is_bear and rsi > 58: reversion_score += 20
+        reversion_score = max(0, min(100, reversion_score))
+
+        # 3. Volatility & Breakout Strategy (ATR surge + volume)
+        breakout_score = 50
+        if signal_data.get('volume_confirm'): breakout_score += 30
+        if atr > 0 and body_ratio > 0.6: breakout_score += 20
+        breakout_score = max(0, min(100, breakout_score))
+
+        # 4. Candlestick & Pattern Depth Strategy
+        pattern_score = 50
+        if depth_type in ['hammer', 'strong_bull'] and is_bull: pattern_score = 85
+        elif depth_type in ['gravestone', 'strong_bear'] and is_bear: pattern_score = 85
+        elif depth_type == 'bullish_engulfing' and is_bull: pattern_score = 80
+        elif depth_type == 'doji': pattern_score = 30
+        pattern_score = max(0, min(100, pattern_score))
+
+        # 5. MTF Alignment Matrix Strategy
+        mtf_score = 50
+        mtf_bull = 0
+        mtf_bear = 0
+        if mtf_data:
+            for tf, s in mtf_data.items():
+                if s and (s.get('signal') or '').startswith('LE'): mtf_bull += 1
+                elif s and (s.get('signal') or '').startswith('SE'): mtf_bear += 1
+            if is_bull:
+                mtf_score = int((mtf_bull / max(1, len(mtf_data))) * 100)
+            elif is_bear:
+                mtf_score = int((mtf_bear / max(1, len(mtf_data))) * 100)
+        mtf_score = max(0, min(100, mtf_score))
+
+        # Composite Unified Score
+        composite_score = (
+            trend_score * 0.25 +
+            reversion_score * 0.20 +
+            breakout_score * 0.15 +
+            pattern_score * 0.20 +
+            mtf_score * 0.20
+        )
+        base_score = signal_data.get('score', 50)
+        final_composite = round((composite_score * 0.7) + (base_score * 0.3), 1)
+        final_composite = max(0, min(100, final_composite))
+
+        return {
+            "composite_score": final_composite,
+            "strategies": {
+                "trend_pullback": trend_score,
+                "mean_reversion": reversion_score,
+                "volatility_breakout": breakout_score,
+                "pattern_depth": pattern_score,
+                "mtf_alignment": mtf_score
+            }
+        }
 
     def depth_analysis_before_trade(self, symbol, timeframe, signal_data, mtf_data, historical_data):
         """
@@ -193,27 +294,19 @@ class ActionEngine:
             "detail": f"Patterns: {', '.join(patterns_found) if patterns_found else 'None strong'}"
         }
 
-        # Overall score calculation (weights from subagents)
-        overall = (
-            depth_score * 0.15 +
-            direction_score * 0.10 +
-            past_analysis_score * 0.10 +
-            top_score * 0.20 +
-            strategy_score * 0.15 +
-            pattern_score * 0.15 +
-            signal_data.get('score',0) * 0.15  # base signal score
-        )
-        analysis["overall_score"] = max(0, min(100, overall + 50))  # normalize to 0-100
-        # Adjust to be more realistic: if base signal 70, overall should be around 70
-        analysis["overall_score"] = (analysis["overall_score"] + signal_data.get('score',0)) / 2
+        # Multi-Strategy Combination Scoring (Single Base Auto Trader Engine)
+        strat_calc = self.compute_multi_strategy_composite_score(signal_data, mtf_data, historical_data)
+        analysis["strategy_breakdown"] = strat_calc["strategies"]
+        composite_score = strat_calc["composite_score"]
+        analysis["overall_score"] = composite_score
 
         # Can trade logic
         can_trade = True
         reasons_block = []
         if analysis["overall_score"] < 60:
             can_trade = False
-            reasons_block.append(f"Overall score low {analysis['overall_score']:.1f} <60")
-        if near_top and signal_data['signal'].startswith('LE') and rejection_count >=3:
+            reasons_block.append(f"Composite score low {analysis['overall_score']:.1f} < 60")
+        if near_top and signal_data['signal'].startswith('LE') and rejection_count >= 3:
             can_trade = False
             reasons_block.append(f"Double top risk: near top with {rejection_count} rejections")
         if depth == 'doji' and body_ratio < 0.2:
@@ -226,29 +319,35 @@ class ActionEngine:
         analysis["can_trade"] = can_trade
         analysis["block_reasons"] = reasons_block
 
-        # Action required logic
+        # Action required logic based on bot_mode
         if not can_trade:
             analysis["action_required"] = "blocked"
             analysis["reason"] = "; ".join(reasons_block)
+        elif self.bot_mode == "manual":
+            analysis["action_required"] = "approval"
+            analysis["reason"] = f"Manual Mode - User approval required | Score {analysis['overall_score']:.1f}"
+        elif self.bot_mode == "semi_auto":
+            analysis["action_required"] = "approval"
+            analysis["reason"] = f"Semi-Auto Queue - Ready for approval | Score {analysis['overall_score']:.1f}"
         elif self.config.LIVE_TRADING:
             # Real account strict
             if self.risk_manager.real_trades_confirmed < 10:
                 analysis["action_required"] = "approval"
                 analysis["reason"] = f"Real first 10 trades require approval ({self.risk_manager.real_trades_confirmed}/10) + score {analysis['overall_score']:.1f}"
-            elif analysis["overall_score"] >= self.auto_approval_threshold and top_score >=0 and depth_score >=0:
+            elif analysis["overall_score"] >= self.auto_approval_threshold and top_score >= 0 and depth_score >= 0:
                 analysis["action_required"] = "auto_approved"
-                analysis["reason"] = f"Score {analysis['overall_score']:.1f} >= {self.auto_approval_threshold} and all depth pass - auto approved real"
+                analysis["reason"] = f"Auto Bot Real: Score {analysis['overall_score']:.1f} >= {self.auto_approval_threshold} & depth passed"
             else:
                 analysis["action_required"] = "approval"
-                analysis["reason"] = f"Score {analysis['overall_score']:.1f} < {self.auto_approval_threshold} or depth fail - need approval"
+                analysis["reason"] = f"Score {analysis['overall_score']:.1f} < {self.auto_approval_threshold} - queued for approval"
         else:
-            # Demo
+            # Demo Full Auto Bot
             if analysis["overall_score"] >= self.demo_threshold:
                 analysis["action_required"] = "auto_approved"
-                analysis["reason"] = f"Demo score {analysis['overall_score']:.1f} >= {self.demo_threshold} auto approved"
+                analysis["reason"] = f"Auto Bot Demo: Score {analysis['overall_score']:.1f} >= {self.demo_threshold} auto-executed"
             else:
                 analysis["action_required"] = "approval"
-                analysis["reason"] = f"Demo score {analysis['overall_score']:.1f} < {self.demo_threshold} need approval"
+                analysis["reason"] = f"Score {analysis['overall_score']:.1f} < {self.demo_threshold} queued for approval"
 
         return analysis
 
@@ -322,6 +421,72 @@ class ActionEngine:
 
     def get_history(self, limit=50):
         return self.action_history[-limit:][::-1]
+
+    def manage_open_positions(self, trader):
+        """
+        Autonomous Trade Lifecycle Manager:
+        - Break-Even (BE) Shift: when profit reaches +1.2R or +1.2 ATR, move SL to Entry + buffer.
+        - Trailing Stop: when profit reaches +2.0R, trail SL along ATR to lock in gains.
+        - Returns list of management events triggered.
+        """
+        positions = trader.get_positions()
+        events = []
+        for p in positions:
+            ticket = p.get("ticket")
+            symbol = p.get("symbol", "")
+            ptype = p.get("type", "BUY")
+            open_price = float(p.get("price_open") or 0)
+            curr_price = float(p.get("price_current") or open_price)
+            sl = float(p.get("sl") or 0)
+            tp = float(p.get("tp") or 0)
+            if open_price == 0 or ticket is None:
+                continue
+
+            # Adaptive ATR approximation per symbol
+            atr_est = open_price * (0.003 if "XAU" in symbol else 0.006)
+            risk = abs(open_price - sl) if sl > 0 else (atr_est * 1.5)
+
+            if ptype == "BUY":
+                gain = curr_price - open_price
+                r_multiple = gain / risk if risk > 0 else 0
+                
+                # 1. Break-Even Check (+1.2R or +1.2 ATR)
+                if (r_multiple >= 1.2 or gain >= atr_est * 1.2) and (sl < open_price or sl == 0):
+                    new_sl = round(open_price + (atr_est * 0.1), 2)
+                    trader.modify_position(ticket, new_sl, tp)
+                    msg = f"Ticket #{ticket} ({symbol} BUY): Auto shifted to BREAK-EVEN (SL: {new_sl})"
+                    self.log(msg)
+                    events.append({"type": "break_even", "ticket": ticket, "symbol": symbol, "new_sl": new_sl, "message": msg})
+                
+                # 2. Trailing Stop Check (+2.0R)
+                elif r_multiple >= 2.0 and (curr_price - (atr_est * 1.2)) > sl:
+                    new_sl = round(curr_price - (atr_est * 1.2), 2)
+                    trader.modify_position(ticket, new_sl, tp)
+                    msg = f"Ticket #{ticket} ({symbol} BUY): TRAILING STOP updated to {new_sl}"
+                    self.log(msg)
+                    events.append({"type": "trailing_stop", "ticket": ticket, "symbol": symbol, "new_sl": new_sl, "message": msg})
+
+            elif ptype == "SELL":
+                gain = open_price - curr_price
+                r_multiple = gain / risk if risk > 0 else 0
+                
+                # 1. Break-Even Check
+                if (r_multiple >= 1.2 or gain >= atr_est * 1.2) and (sl > open_price or sl == 0):
+                    new_sl = round(open_price - (atr_est * 0.1), 2)
+                    trader.modify_position(ticket, new_sl, tp)
+                    msg = f"Ticket #{ticket} ({symbol} SELL): Auto shifted to BREAK-EVEN (SL: {new_sl})"
+                    self.log(msg)
+                    events.append({"type": "break_even", "ticket": ticket, "symbol": symbol, "new_sl": new_sl, "message": msg})
+                
+                # 2. Trailing Stop Check
+                elif r_multiple >= 2.0 and (curr_price + (atr_est * 1.2)) < sl:
+                    new_sl = round(curr_price + (atr_est * 1.2), 2)
+                    trader.modify_position(ticket, new_sl, tp)
+                    msg = f"Ticket #{ticket} ({symbol} SELL): TRAILING STOP updated to {new_sl}"
+                    self.log(msg)
+                    events.append({"type": "trailing_stop", "ticket": ticket, "symbol": symbol, "new_sl": new_sl, "message": msg})
+
+        return events
 
     def log(self, msg):
         entry = f"[{datetime.now()}] [ACTION_ENGINE] {msg}"
